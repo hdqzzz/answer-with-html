@@ -1,3 +1,61 @@
+# Answer with HTML
+
+A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), based on upstream v0.5.7 (`fa42f5c`). The rendering engine and its MIT attribution are preserved.
+
+## What this edition changes
+
+- Explain the main point, its reasons and a concrete example directly in the body.
+- Keep key conditions, causal links and useful detail. Brevity should not remove the information needed to understand the answer.
+- Let readers expand supplementary sources, longer comparisons and implementation details with native disclosures.
+- Do not add evidence-status labels or review cards by default.
+- Use paper and light mode for everyday output, and omit the project promotion above the page title.
+
+The skill identifier remains `answer-me-with-html` for compatibility. Its entry point is [SKILL.md](skills/answer-me-with-html/SKILL.md); [the writing reference](skills/answer-me-with-html/references/readable-explanations.md) and [a complete Chinese draft](examples/clear-explanation.zh.md) show the approach.
+
+## Install and use
+
+Install only the skill, which includes a standalone CLI:
+
+```sh
+npx skills add hdqzzz/answer-with-html --skill answer-me-with-html
+```
+
+Or clone this repository and link `skills/answer-me-with-html` into your agent's skill directory. Node.js 20 or newer is required. Set your persistent appearance preferences with:
+
+```sh
+node skills/answer-me-with-html/scripts/am.mjs config set theme paper
+node skills/answer-me-with-html/scripts/am.mjs config set mode light
+node skills/answer-me-with-html/scripts/am.mjs render examples/clear-explanation.zh.md --no-open -o out/example.html
+```
+
+## Maintain this edition
+
+`origin` is this repository; `upstream` is the original project. Review local changes before pulling or merging. Preserve this edition's writing rules, appearance preference and promotion removal when incorporating upstream changes.
+
+```sh
+npm ci --ignore-scripts
+npm run build
+npm test
+```
+
+The bundled CLI is generated: edit `src/`, rebuild, and commit both source and bundle. Upstream website and release publishing jobs remain scoped to the original repository. Local configuration, generated private reports and credentials are not part of this edition.
+
+## Sources and inspiration
+
+- [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html): the source project, Markdown draft format, rendering engine and bundled CLI. This edition retains its [MIT license](LICENSE) and font licenses.
+- [Andrej Karpathy's original post](https://x.com/karpathy/status/2105819303471976479): clear writing, diagrams, interactive pages and bespoke explainer videos as ways to understand model output.
+- [bounce12340/karpathy-explain-skill](https://github.com/bounce12340/karpathy-explain-skill): explanation depth, from the main idea to the mechanism and further detail.
+- [norton77930/understanding-ai-outputs](https://github.com/norton77930/understanding-ai-outputs): purposeful interaction patterns, optional details and published comparisons that retain negative results.
+- [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer): draw the mechanism, label arrows with actions and match the visual to the relationship.
+- [ajithraghavan/make-it-click](https://github.com/ajithraghavan/make-it-click): choose a simple format that adequately explains the subject.
+- [ashryaagr/karpathy-output-style](https://github.com/ashryaagr/karpathy-output-style): concrete examples and interactions that teach something.
+- [plannotator/effective-html](https://github.com/plannotator/effective-html): preserve meaningful source content while improving presentation.
+
+The projects other than the source engine informed the editorial approach; their code is not bundled. This is an independent edition, without endorsement by the referenced authors.
+
+<details>
+<summary>Original upstream README</summary>
+
 <p align="center">
   <img src="docs/logo.svg" width="64" height="64" alt="Answer me with HTML logo">
 </p>
@@ -318,3 +376,6 @@ Found a bug? Please open a [GitHub issue](https://github.com/QingYunA/answer-me-
 ## License
 
 [MIT](LICENSE). The Bangers font that a theme can embed is under the [SIL Open Font License 1.1](skills/answer-me-with-html/licenses/OFL-Bangers.txt).
+
+
+</details>

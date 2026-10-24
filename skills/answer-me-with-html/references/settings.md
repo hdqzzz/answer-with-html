@@ -2,6 +2,8 @@
 
 Read this when SKILL.md section 0 sends you here.
 
+This edition is maintained at https://github.com/hdqzzz/answer-with-html. Preserve its readable-explanation rules, paper/light preference and renderer without the header promotion. For a source checkout, inspect the working tree before updating, pull this edition's `origin`, then run `npm ci --ignore-scripts`, `npm run build` and `npm test`. The installed skill may be linked to `skills/answer-me-with-html` in that checkout. Merge updates from the original project's `upstream` separately and review the personal changes before rebuilding. Do not replace this edition with an upstream skill-directory copy.
+
 When the arguments for this call (shown in section 0 of SKILL.md) start with `config` (for example `/answer-me-with-html config open off`), this turn handles settings only and produces no page:
 
 - `config`: run `am config` to show the current settings, then let the user choose. Where the agent has a choice tool such as AskUserQuestion, use it: at most 4 settings at a time, these first: `open`, `theme`, `mode`, `style`, with the current value marked in the options. Otherwise ask in plain text.

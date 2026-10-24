@@ -15,7 +15,11 @@ test('bundle: the skill directory still renders after it is copied out alone', (
   try {
     cpSync(join(ROOT, 'skills/answer-me-with-html'), join(dir, 'answer-me-with-html'), { recursive: true });
     const cli = join(dir, 'answer-me-with-html/scripts/am.mjs');
-    const env = { ...process.env, AM_NO_OPEN: '1' };
+    const env = { ...process.env, AM_NO_OPEN: '1', AM_NO_UPDATE_CHECK: '1', AM_HOME: join(dir, 'home') };
+    for (const [key, value] of [['theme', 'paper'], ['mode', 'light']]) {
+      const config = spawnSync(process.execPath, [cli, 'config', 'set', key, value], { encoding: 'utf8', env });
+      assert.equal(config.status, 0, config.stderr);
+    }
 
     const version = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8', env });
     assert.equal(version.stdout.trim(), PKG.version, 'bundle version must match package.json (forgot npm run build?)');
@@ -29,6 +33,8 @@ test('bundle: the skill directory still renders after it is copied out alone', (
     assert.match(html, /<h1>打包测试<\/h1>/);
     assert.match(html, /class="am-node /);
     assert.match(html, /--font-mono/, 'CSS is inlined');
+    assert.match(html, /<html[^>]*data-theme="paper" data-mode="light"/);
+    assert.doesNotMatch(html, /class="am-colophon"|Star on GitHub/);
 
     const patched = spawnSync(process.execPath, [cli, 'patch', out, '--panel', 'A'], {
       input: '## A\n只改这一格。\n', encoding: 'utf8', env, cwd: dir,
@@ -38,6 +44,8 @@ test('bundle: the skill directory still renders after it is copied out alone', (
     const after = readFileSync(out, 'utf8');
     assert.match(after, /只改这一格/);
     assert.doesNotMatch(after, /class="am-node /);
+    assert.match(after, /<html[^>]*data-theme="paper" data-mode="light"/);
+    assert.doesNotMatch(after, /class="am-colophon"|Star on GitHub/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

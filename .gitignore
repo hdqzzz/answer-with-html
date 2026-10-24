@@ -1,6 +1,10 @@
 node_modules/
 .DS_Store
 *.log
+.env
+.env.*
+!.env.example
+out/
 coverage/
 .playwright-mcp/
 bench/results/**/*.html
