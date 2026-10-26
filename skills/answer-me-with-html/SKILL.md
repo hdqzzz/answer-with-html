@@ -81,6 +81,7 @@ AM_EOF
 
 4. Read the output:
    - `✓ <path>`: success. Whether the browser opens automatically depends on the user's settings (`am config`); `--no-open` affects only this run. A page with STE or code warnings never opens automatically.
+   - Browser inspection is opt-in: use browser tools to check layout or interactions only when the user explicitly asks. Generating a page, including one with `<details>`, does not require screenshots, keyboard checks or narrow-screen checks. This does not change the user's auto-open setting.
    - `✗ L<line> …` + `Correct example:`: no page was written. The CLI lists every error of the draft at once, in line order (`✗ n errors in the draft`). Read all of them, fix each flagged line following its example, then render again.
    - `  draft: <path>`: the CLI saved your stdin draft there, and every `L<line>` in the output matches that file. Change only the flagged lines in that file with your file-edit tool; do not send a new heredoc. Then run `am render <path>`; when a page was written, add `--replace` or reuse `-o` as the rule on rendering again below says. The CLI deletes the saved draft once it renders with no warnings. A draft you passed as a file path is not copied: edit that file.
    - `code n warnings`: a code block is longer than 40 lines, or a diff hunk has a different number of lines than its `@@` header says. Cut the block or fix the header to the lines that make the point and render again, or keep it if every line matters.

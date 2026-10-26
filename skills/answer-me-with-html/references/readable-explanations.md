@@ -25,4 +25,4 @@ The chart compares recorded figures. Predicting how sales respond to a price cha
 
 The example's main text contains the purpose, a concrete use and an important limit. The disclosure holds the extra instructions. It does not hide the reason for the conclusion.
 
-After rendering, open and close the disclosure once. Check that its label explains what it contains, that it works by keyboard, and that the page remains readable at a narrow width.
+Only when the user explicitly requests browser inspection, open and close the disclosure once, check keyboard operation, and check readability at a narrow width. Otherwise, do not run browser checks as part of rendering; read the CLI output for errors and warnings.
