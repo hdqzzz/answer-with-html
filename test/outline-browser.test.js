@@ -113,6 +113,9 @@ test('outline: Enter opens the list, arrows move between links, Esc closes and r
   await key('Enter', 'Enter', 13, '\r');
   assert.equal(await isOpen(), true);
   await key('ArrowDown', 'ArrowDown', 40);
+  assert.match(await active(), /^#panel-[A-X]$/);
+  // Entry follows the reading position; Home gives the arrow-key checks a fixed starting point.
+  await key('Home', 'Home', 36);
   assert.equal(await active(), '#panel-A');
   await key('ArrowDown', 'ArrowDown', 40);
   assert.equal(await active(), '#panel-B');
@@ -208,11 +211,14 @@ test('outline: the preview label of a hovered tick stays in the viewport', { ski
 
 test('outline: the section being read is marked on its tick and its link', { skip: SKIP }, async () => {
   await open('right');
-  assert.equal(await evaluate('document.querySelector(".am-tick.is-current").dataset.id'), 'A');
+  assert.equal(await evaluate('document.querySelectorAll(".am-tick.is-current").length'), 1);
   await evaluate('window.scrollTo(0, scrollY + document.getElementById("panel-M").getBoundingClientRect().top - innerHeight * 0.32)');
   await until('document.querySelector(".am-tick.is-current")?.dataset.id === "M"', 'the current tick');
   assert.equal(await evaluate('document.querySelector(".am-outline-list a[aria-current=true]").getAttribute("href")'), '#panel-M');
   assert.equal(await evaluate('document.querySelectorAll(".am-outline-list a[aria-current]").length'), 1);
+  await evaluate('document.querySelector(".am-outline > summary").focus()');
+  await key('ArrowDown', 'ArrowDown', 40);
+  assert.equal(await active(), '#panel-M', 'keyboard entry follows the section being read');
 });
 
 test('outline: without JavaScript the list opens and the links jump', { skip: SKIP }, async () => {
