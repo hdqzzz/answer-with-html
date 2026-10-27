@@ -10,11 +10,11 @@ These fictional examples illustrate wording choices, not required sections or me
 
 | Vague wording | Concrete explanation |
 |---|---|
-| 提升导入状态的一致性。 | 文件校验失败，页面却仍显示导入成功。页面应显示失败，让用户知道要修正文件后重试。 |
-| 增加两层校验，完善输入治理。 | 重复检查避免同一文件反复导入；必填检查避免缺少必要信息。两项检查分别解决不同问题。 |
-| 过滤效果提升。 | 在同一组100条模拟记录中，重复提醒从20次降到8次，漏掉的有效提醒从1次增到3次。重复提醒减少了，但漏报有所增加。 |
+| `提升导入状态的一致性。` | `文件校验失败，页面却仍显示导入成功。页面应显示失败，让用户知道要修正文件后重试。` |
+| `增加两层校验，完善输入治理。` | `重复检查避免同一文件反复导入；必填检查避免缺少必要信息。两项检查分别解决不同问题。` |
+| `过滤效果提升。` | `在同一组100条模拟记录中，重复提醒从20次降到8次，漏掉的有效提醒从1次增到3次。重复提醒减少了，但漏报有所增加。` |
 
-For a formal report, write the finding directly; omit notes such as “可以直接同步下面这段”. For a requested review, explain the relevant changes and decisions; do not turn ordinary reports into review forms.
+For a formal report, write the finding directly; omit notes such as `可以直接同步下面这段`. For a requested review, explain the relevant changes and decisions; do not turn ordinary reports into review forms.
 
 ## Native disclosure markup
 
