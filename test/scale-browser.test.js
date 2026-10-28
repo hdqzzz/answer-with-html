@@ -369,7 +369,7 @@ test('e2e scale: with localStorage throwing, the buttons still work for the tab'
   }
 });
 
-test('e2e scale: headings stay above body text across shipped themes and text sizes', { skip: SKIP }, async () => {
+test('e2e scale: headings stay readable across shipped themes and text sizes', { skip: SKIP }, async () => {
   const draft = `---
 title: Heading hierarchy
 lang: en
@@ -426,6 +426,14 @@ Body text for comparison.
           });
         }
       }
+      const clipped = await evaluate(`(() => {
+        const panel = document.querySelector('.am-panel');
+        panel.style.width = '180px';
+        const headings = [document.querySelector('.am-head h1'), ...panel.querySelectorAll('h2, h3, h4, h5, h6')];
+        headings.forEach((heading) => { heading.textContent = 'InteroperabilityHandshakeIdentifier'; });
+        return [panel, ...headings].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.tagName);
+      })()`);
+      assert.deepEqual(clipped, [], `${template}/${theme}: long headings fit narrow panels at maximum scale`);
     }
   }
 });
