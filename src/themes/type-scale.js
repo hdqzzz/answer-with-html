@@ -7,7 +7,10 @@ export const SCALE = Object.freeze({ min: 0.8, max: 1.5, step: 0.05 });
 // Page (HTML) text sizes in px at scale 1, one entry per distinct size page CSS uses, named by role.
 export const SIZES = Object.freeze({
   title: 24,
+  h2: 20,
+  h3: 18,
   stat: 17,
+  h4: 16,
   lead: 15.5,
   heading: 15,
   body: 14,

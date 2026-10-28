@@ -4,12 +4,14 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { connect, devtoolsUrl, findChrome } from '../src/video/export.js';
 import { renderDoc } from '../src/render.js';
+import { BUILTIN_NAMES, withThemes } from '../src/themes/registry.js';
+import { readThemeFile } from '../src/themes/user.js';
 
 const CHROME = findChrome();
 const SKIP = process.env.AM_E2E !== '1'
@@ -364,5 +366,66 @@ test('e2e scale: with localStorage throwing, the buttons still work for the tab'
     assert.equal((await state()).scale, 1, 'a second click steps back');
   } finally {
     await page('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  }
+});
+
+test('e2e scale: headings stay above body text across shipped themes and text sizes', { skip: SKIP }, async () => {
+  const draft = `---
+title: Heading hierarchy
+lang: en
+---
+## A Chapter
+Body text for comparison.
+### Topic
+#### Detail
+##### Note
+###### Further detail
+`;
+  const selectors = ['.am-head h1', '.am-panel-head h2', '.am-md h3', '.am-md h4', '.am-md h5', '.am-md h6'];
+  const catalog = fileURLToPath(new URL('../marketplace/themes/', import.meta.url));
+  const extra = readdirSync(catalog).filter((name) => name.endsWith('.json')).map((name) => {
+    const result = readThemeFile(join(catalog, name), BUILTIN_NAMES);
+    assert.deepEqual(result.errors, [], name);
+    return result.theme;
+  });
+  const allThemes = withThemes(extra);
+  for (const template of ['doc', 'sheet']) {
+    for (const theme of allThemes.names('page')) {
+      const path = join(tmp, `headings-${template}-${theme}.html`);
+      writeFileSync(path, renderDoc(draft, { template, theme }, {}, { themes: allThemes }).html);
+      await openFile(path, DESKTOP);
+      for (const mode of ['light', 'dark']) {
+        let baseline;
+        for (const scale of [1, 0.8, 1.5]) {
+          const sizes = await evaluate(`(() => {
+            const root = document.documentElement;
+            root.dataset.theme = ${JSON.stringify(theme)};
+            root.dataset.mode = ${JSON.stringify(mode)};
+            root.style.setProperty('--am-scale', ${JSON.stringify(String(scale))});
+            const read = (selector) => {
+              const style = getComputedStyle(document.querySelector(selector));
+              return { size: parseFloat(style.fontSize), weight: Number(style.fontWeight) };
+            };
+            return { body: read('.am-md p'), headings: ${JSON.stringify(selectors)}.map(read) };
+          })()`);
+          const context = `${template}/${theme}/${mode}/${scale}`;
+          sizes.headings.forEach((heading, i) => {
+            assert.ok(heading.size >= sizes.body.size, `${context}: h${i + 1} (${heading.size}px) is smaller than body (${sizes.body.size}px)`);
+            if (Math.abs(heading.size - sizes.body.size) < 0.01) {
+              assert.ok(heading.weight > sizes.body.weight, `${context}: a body-sized heading needs stronger weight`);
+            }
+            if (i) {
+              const previous = sizes.headings[i - 1].size;
+              assert.ok(i < 4 ? previous > heading.size : previous >= heading.size, `${context}: h${i} must rank above h${i + 1}`);
+            }
+          });
+          if (scale === 1) baseline = sizes;
+          else [sizes.body, ...sizes.headings].forEach((item, i) => {
+            const original = [baseline.body, ...baseline.headings][i].size;
+            assert.ok(Math.abs(item.size - original * scale) < 0.02, `${context}: text ${i} scales proportionally`);
+          });
+        }
+      }
+    }
   }
 });
