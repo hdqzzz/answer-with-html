@@ -1,6 +1,6 @@
 ---
 name: answer-me-with-html
-argument-hint: "[config [key value] | clean | update]"
+argument-hint: "[config [key value] | dingtalk [on|off|status] | clean | update]"
 description: >-
   Turns an answer into a one-page visual HTML explainer: the model writes a short Markdown draft and
   the bundled CLI builds one page. Use it proactively and liberally in replies to the user, without being asked, whenever a
@@ -27,7 +27,7 @@ Local preference: use the paper theme in light mode for pages, including pages w
 
 Arguments for this call: `$ARGUMENTS`
 
-When the arguments start with `config`, `clean` or `update`, or the user asks to change a setting, clean up pages or update this skill: read `${CLAUDE_SKILL_DIR}/references/settings.md` and follow it. That turn produces no page.
+When the arguments start with `config`, `dingtalk`, `clean` or `update`, or the user asks to change a setting, clean up pages or update this skill: read `${CLAUDE_SKILL_DIR}/references/settings.md` and follow it. That turn produces no page.
 
 ## 1. Decide: produce a page or not
 
@@ -98,6 +98,7 @@ AM_EOF
    - `STE n warnings`: rewrite the flagged lines as suggested, then render again. Retry at most 2 rounds; if warnings remain, keep the last page and say so.
    - When rendering again after a `✓`, add `--replace <path from the last ✓ line>` for a page in the data directory's `pages/` or the temporary folder's `pages/`; the CLI deletes that page once the new one is written. For a page written with `-o`, reuse the same quoted `-o` HTML file path to overwrite it in place.
    - `! Cleanup hint: …` or `! Update hint: …`: pass it on to the user in one sentence at the end of the reply, and ask whether to clean up / update. **Do not run am clean or the update command yourself**; wait until the user agrees. The CLI throttles these: the cleanup hint appears at most once every 7 days, the update hint at most once every 3 days.
+   - After the final render or patch of a report for the user, run `node "${CLAUDE_SKILL_DIR}/scripts/dingtalk.mjs" send "<absolute path from the last ✓>"`. It checks the local opt-in and sends the original HTML by default, only to the authenticated user's own DingTalk conversation using existing `dws` authorization. Convert only when the user explicitly requests it: add `--format pdf` for that delivery without changing the HTML default. Run it once after drafting and warning fixes, not for every intermediate render. Skip it when the user asks for local-only output or no sending, for internal agent reports, settings, tests and videos. It does nothing when disabled. For setup or errors, read `references/dingtalk.md`. A delivery error leaves the HTML available: report the delivery state accurately and do not resubmit blindly. Say “sent” only for `status: sent` or `already-sent`.
 5. Reply in the terminal with only 2–3 lines: one core conclusion + the page link. The 2–3 line limit is for replies to the user. If a parent agent asked for the page, also return the verification details it asked for (step 1), in full. Do not paste the draft or the HTML back into the terminal. Write this reply after the render, as the last step of the turn: render the page first, then reply. No tool call comes after the reply, except the choice tool that puts the page's asks to the user: when the page has asks and your host can ask questions (Claude Code's AskUserQuestion), write this reply first — the page link on its last line — and call that tool right after it, so the user opens the page before answering. Asking first leaves the user answering questions about a page they have not seen.
    If the render output has a `link:` line, the user runs `am serve`: use that URL as the page link instead, with the URL as the label too, and skip the local-file links below. Never start `am serve` yourself; only the user starts it.
    Otherwise, in DeepSeek Harness, write a Markdown link directly to the absolute path from the `✓` line, with the path as the label too: `[C:/Users/Name/My Pages/page.html](<C:/Users/Name/My Pages/page.html>)` on Windows or `[/abs/path.html](</abs/path.html>)` on macOS/Linux. Use forward slashes on Windows and angle brackets around the destination so spaces work. These path links open the Document Preview panel.

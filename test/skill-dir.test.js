@@ -32,7 +32,7 @@ test('skill dir: every command spells out the host variable instead of a relativ
     for (const line of read(file).split('\n')) {
       if (!/^\s*node\s/.test(line)) continue;
       commands += 1;
-      assert.ok(line.includes('${CLAUDE_SKILL_DIR}/scripts/am.mjs'),
+      assert.match(line, /\$\{CLAUDE_SKILL_DIR\}\/scripts\/(?:am|dingtalk)\.mjs/,
         `${file} runs node on a path that is not the host variable: ${line.trim()}`);
     }
   }
