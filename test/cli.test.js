@@ -46,7 +46,7 @@ test('cli render: reads stdin, writes to AM_HOME/pages, prints the path and stat
   const r = await run(['render', '-'], { stdin: GOOD });
   assert.equal(r.code, 0, r.err);
   const file = r.out.match(/✓ (.+\.html)/)[1];
-  assert.ok(file.startsWith(join(dir, 'pages', 'CLI-测试-')));
+  assert.ok(file.startsWith(join(dir, 'pages', 'cli-')));
   assert.match(readFileSync(file, 'utf8'), /<h1>CLI 测试<\/h1>/);
   assert.match(r.out, /sheet · blueprint · 1 panel · flow×1/);
   assert.match(r.out, /STE ✓ 0 warnings/);
@@ -60,9 +60,73 @@ test('cli render: the injected clock sets the default file name; the injected op
     env: { AM_HOME: dir, AM_NO_UPDATE_CHECK: '1' }, cwd: dir, now: () => now, open: (f) => opened.push(f),
   });
   assert.equal(await call(['render', '-']), 0);
-  assert.deepEqual(opened, [join(dir, 'pages', 'CLI-测试-20260102-030405.html')]);
+  assert.deepEqual(opened, [join(dir, 'pages', 'cli-20260102-030405.html')]);
   assert.equal(await call(['render', '-', '--no-open']), 0);
   assert.equal(opened.length, 1, '--no-open does not open');
+});
+
+test('cli render: default page names are ASCII and at most 24 characters from the title', async () => {
+  const now = new Date(2026, 0, 2, 3, 4, 5).getTime();
+  const render = async (title) => {
+    const out = sink();
+    const code = await main(['render', '-', '--no-open'], {
+      stdout: out.stream, stderr: sink().stream,
+      stdin: Readable.from([`---\ntitle: ${title}\n---\n## A one\nText.\n`]),
+      env: { AM_HOME: dir, AM_NO_UPDATE_CHECK: '1' }, cwd: dir, now: () => now,
+    });
+    assert.equal(code, 0);
+    return basename(out.text.match(/^✓ (.+\.html)$/m)[1]);
+  };
+
+  assert.equal(await render('更新评估'), 'page-20260102-030405.html');
+
+  const mixed = (await render('answer-me-with-html 0.5.3 → 0.5.10 更新评估')).replace(/-\d{8}-\d{6}\.html$/, '');
+  assert.match(mixed, /^[a-z0-9-]+$/, mixed);
+  assert.ok(mixed.length <= 24, mixed);
+  assert.equal(mixed, 'answer-me-with-html-0-5');
+
+  assert.equal(await render('TCP Three-Way Handshake'), 'tcp-three-way-handshake-20260102-030405.html');
+});
+
+test('cli render: file: in the front matter names the page and the saved draft, under the same ASCII rule', async () => {
+  const { home, env } = freshHome();
+  const render = async (front, args = []) => {
+    const r = await run(['render', '-', '--no-open', ...args], { stdin: `---\n${front}\n---\n## A one\nUtilize the tool.\n`, env });
+    assert.equal(r.code, 0, r.err);
+    return { page: basename(r.out.match(/^✓ (.+\.html)$/m)[1]), draft: basename(r.out.match(/^ {2}draft: (.+)$/m)?.[1] ?? '') };
+  };
+
+  const named = await render('title: 会话切换闪回首页 · 修复结果\nfile: session-flashback-fix');
+  assert.match(named.page, /^session-flashback-fix-\d{8}-\d{6}\.html$/);
+  assert.match(named.draft, /^session-flashback-fix-\d{8}-\d{6}\.md$/);
+  assert.match((await render('title: 更新评估\nfile: Update Review!')).page, /^update-review-\d{8}-\d{6}\.html$/);
+  // A file: with no ASCII letter or digit names nothing, so the title decides, as without file:.
+  assert.match((await render('title: Docker 渲染器\nfile: 渲染器')).page, /^docker-\d{8}-\d{6}\.html$/);
+  // -o still wins.
+  assert.equal((await render('title: T\nfile: ignored', ['-o', join(home, 'out.html')])).page, 'out.html');
+});
+
+test('cli render: a second default page in the same second gets -2 and keeps both', async () => {
+  const { home } = freshHome();
+  const now = new Date(2026, 0, 2, 3, 4, 5).getTime();
+  const render = async (body) => {
+    const out = sink();
+    const code = await main(['render', '-', '--no-open'], {
+      stdout: out.stream, stderr: sink().stream,
+      stdin: Readable.from([`---\ntitle: 更新评估\n---\n## A one\n${body}\n`]),
+      env: { AM_HOME: home, AM_NO_UPDATE_CHECK: '1' }, cwd: home, now: () => now,
+    });
+    assert.equal(code, 0);
+    return out.text.match(/^✓ (.+\.html)$/m)[1];
+  };
+
+  const first = await render('First body.');
+  const second = await render('Second body.');
+  assert.equal(basename(first), 'page-20260102-030405.html');
+  assert.equal(basename(second), 'page-20260102-030405-2.html');
+  assert.ok(existsSync(first));
+  assert.ok(existsSync(second));
+  assert.match(readFileSync(first, 'utf8'), /First body\./);
 });
 
 test('cli video: the summary line names the theme', async () => {
@@ -324,7 +388,7 @@ test('cli list / help', async () => {
 
 test('cli: usage, list, config and every help topic print English only', async () => {
   const { COMPONENTS } = await import('../src/components/index.js');
-  const topics = [...COMPONENTS.keys(), 'html', 'svg', 'format', 'image', 'video', 'patch'];
+  const topics = [...COMPONENTS.keys(), 'html', 'svg', 'format', 'image', 'video', 'export', 'patch'];
   const runs = [[], ['list'], ['config'], ...topics.map((t) => ['help', t])];
   for (const args of runs) {
     const r = await run(args, { env: { AM_NO_OPEN: '1' } });
@@ -412,6 +476,27 @@ test('cli config: close_after_reply decides whether a rendered or patched page c
   // A patch follows the setting at the time of the patch, like the theme and the style.
   assert.equal((await run(['patch', 'off.html', '--panel', 'A'], { stdin: '## A\ny' })).code, 0);
   assert.match(readFileSync(join(dir, 'off.html'), 'utf8'), /&quot;closeAfter&quot;/);
+  await run(['config', 'reset']);
+});
+
+test('cli config: colophon is off by default and remains configurable for render and patch', async () => {
+  assert.equal((await run(['config', 'get', 'colophon'])).out.trim(), 'off');
+  assert.equal((await run(['config', 'set', 'colophon', 'on'])).code, 0);
+  const on = await run(['render', '-', '-o', 'colophon-on.html'], { stdin: '## A\nx' });
+  assert.equal(on.code, 0, on.err);
+  assert.match(readFileSync(join(dir, 'colophon-on.html'), 'utf8'), /<p class="am-colophon">/);
+  // With the setting explicitly on, a patch keeps the line.
+  assert.equal((await run(['patch', 'colophon-on.html', '--panel', 'A'], { stdin: '## A\nz' })).code, 0);
+  assert.match(readFileSync(join(dir, 'colophon-on.html'), 'utf8'), /<p class="am-colophon">/);
+  assert.equal((await run(['config', 'set', 'colophon', 'off'])).code, 0);
+  const off = await run(['render', '-', '-o', 'colophon-off.html'], { stdin: '## A\nx' });
+  assert.equal(off.code, 0, off.err);
+  const page = readFileSync(join(dir, 'colophon-off.html'), 'utf8');
+  assert.doesNotMatch(page, /<p class="am-colophon">|★ Star on GitHub/);
+  assert.match(page, /<meta name="generator" content="Answer me with HTML /, 'the generator meta tag stays');
+  // A patch follows the setting at the time of the patch, like close_after_reply.
+  assert.equal((await run(['patch', 'colophon-on.html', '--panel', 'A'], { stdin: '## A\ny' })).code, 0);
+  assert.doesNotMatch(readFileSync(join(dir, 'colophon-on.html'), 'utf8'), /<p class="am-colophon">/);
   await run(['config', 'reset']);
 });
 
@@ -763,6 +848,28 @@ test('cli render: a failed stdin draft is saved verbatim under drafts/ and its p
   assert.equal(dirname(path), join(home, 'drafts'));
   assert.match(basename(path), /^[^/]+-\d{8}-\d{6}\.md$/);
   assert.equal(readFileSync(path, 'utf8'), THREE_ERRORS);
+});
+
+test('cli render: a saved stdin draft name follows the same ASCII rule as a page', async () => {
+  const { home, env } = freshHome();
+  const r = await run(['render', '-'], { stdin: '---\ntitle: 更新评估\n---\n## A\nUtilize the tool.\n', env });
+  assert.equal(r.code, 0);
+  const path = r.out.match(/^ {2}draft: (.+)$/m)[1];
+  assert.equal(dirname(path), join(home, 'drafts'));
+  assert.match(basename(path), /^page-\d{8}-\d{6}\.md$/);
+});
+
+test('cli render: a saved stdin draft takes file: only from the front matter, as the page does', async () => {
+  const { env } = freshHome();
+  const saved = async (stdin) => {
+    const r = await run(['render', '-'], { stdin, env });
+    return basename((r.out + r.err).match(/^ {2}draft: (.+)$/m)[1]);
+  };
+  const body = '## A\nUtilize the tool.\n';
+  assert.match(await saved(`---\ntitle: Body Case\n---\nfile: secret-report\n${body}`), /^body-case-\d{8}-\d{6}\.md$/, 'a file: line in the body');
+  assert.match(await saved(`---\ntitle: Blank Case\nfile:\nsubtitle: next-line\n---\n${body}`), /^blank-case-\d{8}-\d{6}\.md$/, 'an empty file:');
+  assert.match(await saved(`---\ntitle: T\nfile: my-topic # note\n---\n${body}`), /^my-topic-\d{8}-\d{6}\.md$/, 'a trailing comment');
+  assert.match(await saved(`---\ntitle: T\nnot a key line\nfile: broken-front\n---\n${body}`), /^broken-front-\d{8}-\d{6}\.md$/, 'a malformed front matter line');
 });
 
 test('cli render: a strict STE failure and a fatal parse error with a line keep the stdin draft too', async () => {

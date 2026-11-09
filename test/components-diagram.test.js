@@ -118,6 +118,28 @@ test('flow: an edge routed around the outside keeps the margin inside the drawin
   }
 });
 
+// How many pairs of drawn edges cross, read from the bends of their paths. Two edges that only touch at a shared node do not count.
+const crossings = (svg, edges) => {
+  const lines = [...svg.matchAll(/class="am-edge[^"]*" d="([^"]+)"/g)].map((m) => [...m[1].matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map(([, x, y]) => [+x, +y]));
+  assert.equal(lines.length, edges, 'drawn edges');
+  const side = ([ax, ay], [bx, by], [cx, cy]) => Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
+  const cross = ([a, b], [c, d]) => side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+  const segments = (line) => line.slice(1).map((p, i) => [line[i], p]);
+  return lines.flatMap((a, i) => lines.slice(i + 1).filter((b) => segments(a).some((s) => segments(b).some((t) => cross(s, t))))).length;
+};
+
+test('flow: two edges from one node keep the order of the nodes they end at', () => {
+  // dagre ties the edges from Q to M and to Y and keeps the order of the draft, so they crossed although nothing forces them to.
+  const src = 'P -> M\nQ -> M\nP -> X\nQ -> Y\nX -> Z\nY -> Z';
+  for (const dir of ['LR', 'RL', 'TB', 'BT']) assert.equal(crossings(render('flow', src, dir), 6), 0, dir);
+});
+
+test('flow: edges inside a group keep the order of the nodes they end at too', () => {
+  // The order of these lines matters: dagre then leaves a crossing that one swap removes. Other orders can need two moves at once.
+  const src = 'P -> X\nP -> M\nQ -> M\nQ -> Y\nY -> Z\nX -> Z\ngroup G: P, Q, M, X, Y, Z';
+  for (const dir of ['LR', 'RL', 'TB', 'BT']) assert.equal(crossings(render('flow', src, dir), 6), 0, dir);
+});
+
 test('flow: diamond nodes draw as a polygon, databases as a cylinder', () => {
   const svg = render('flow', '{判断?} -> [(DB)]');
   assert.match(svg, /<polygon class="am-node-shape"/);
@@ -271,6 +293,14 @@ test('flow: lays out nodes whose names equal dagre reserved ids or internal grou
 
 // A group name never sits on an edge, an edge label or a node, in any direction, on left-to-right and right-to-left pages.
 // On a right-to-left page the text is anchored at its right end and set in the sans font, so its box extends left from x.
+const NODE_BOX = /<rect class="am-node-shape" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g;
+const EDGE_LABEL_BOX = /<g class="am-edge-label"><rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g;
+const rectBoxes = (svg, re) => [...svg.matchAll(re)].map((m) => {
+  const [x, y, w, h] = m.slice(1).map(Number);
+  return [x, y, x + w, y + h];
+});
+const intersects = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
 function labelClashes(svg, dir, which = 0) {
   const label = [...svg.matchAll(/<text class="am-cluster-label" x="([\d.]+)" y="([\d.]+)">([^<]*)<\/text>/g)][which];
   const [x, y] = [Number(label[1]), Number(label[2])];
@@ -287,15 +317,17 @@ function labelClashes(svg, dir, which = 0) {
       }
     }
   }
-  const rects = [
-    ...svg.matchAll(/<rect class="am-node-shape" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g),
-    ...svg.matchAll(/<g class="am-edge-label"><rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g),
-  ];
-  for (const m of rects) {
-    const [rx, ry, rw, rh] = m.slice(1).map(Number);
-    if (rx < box[2] && box[0] < rx + rw && ry < box[3] && box[1] < ry + rh) clashes.push(`box at ${rx},${ry}`);
+  for (const b of [...rectBoxes(svg, NODE_BOX), ...rectBoxes(svg, EDGE_LABEL_BOX)]) {
+    if (intersects(box, b)) clashes.push(`box at ${b[0]},${b[1]}`);
   }
   return [...new Set(clashes)];
+}
+
+// An edge label lies on top of its own edge, so it only has to stay clear of the node boxes.
+function edgeLabelNodeClashes(svg, which = 0) {
+  const label = rectBoxes(svg, EDGE_LABEL_BOX)[which];
+  assert.ok(label, `edge label ${which} exists`);
+  return rectBoxes(svg, NODE_BOX).filter((node) => intersects(label, node)).map(([x, y]) => `node at ${x},${y}`);
 }
 
 const CROWDED = {
@@ -356,6 +388,65 @@ test('flow: a Thai label wraps inside the node budget instead of one wide line',
   for (const l of lines) assert.ok(measure(l, 13) <= 150, `line too wide: ${l}`);
 });
 
+// ── flow: a literal \n forces a line break (issue #347) ──
+// Mermaid-trained agents write `[Scan job\nAutoSignUpScanJob]`; the backslash and the n were drawn as text.
+const BR = '\\n';
+
+test('flow: a literal \\n in a node label draws one line per part in every shape', () => {
+  const cases = {
+    rect: `[Scan job${BR}AutoSignUpScanJob]`,
+    round: `(Scan job${BR}AutoSignUpScanJob)`,
+    diamond: `{Scan job${BR}AutoSignUpScanJob}`,
+    db: `[(Scan job${BR}AutoSignUpScanJob)]`,
+    bare: `Scan job${BR}AutoSignUpScanJob`,
+  };
+  for (const [shape, node] of Object.entries(cases)) {
+    const svg = render('flow', `${node} -> Done`);
+    const lines = textLines(svg);
+    assert.deepEqual(lines.slice(0, 2), ['Scan job', 'AutoSignUpScanJob'], shape);
+    assert.ok(!lines.some((line) => line.includes(BR)), `${shape}: no literal backslash-n in the text`);
+    assert.match(svg, new RegExp(`am-node--${shape === 'bare' ? 'rect' : shape}`), shape);
+  }
+});
+
+test('flow: a literal \\n in an edge label draws one line per part', () => {
+  const svg = render('flow', `A -> B: first line${BR}second line`);
+  const lines = textLines(svg);
+  assert.deepEqual(lines, ['first line', 'second line', 'A', 'B']);
+  assert.ok(!lines.some((line) => line.includes(BR)), 'no literal backslash-n in the text');
+  assert.ok(Number(svg.match(/<g class="am-edge-label"><rect[^>]*height="([\d.]+)"/)[1]) > 18, 'the label box holds both lines');
+});
+
+test('flow: a long forced edge-label part wraps inside the 240px budget', () => {
+  const svg = render('flow', `A -> B: ${'long '.repeat(40).trim()}${BR}Short`);
+  const width = Number(svg.match(/<g class="am-edge-label"><rect[^>]*width="([\d.]+)"/)[1]);
+  assert.ok(width <= 250, `edge label width ${width} exceeds the 240px wrap limit plus 10px padding`);
+});
+
+test('flow: a multiline edge label stays clear of every node', () => {
+  const svg = render('flow', `A -> B: first line${BR}second line${BR}third line\nB -> C\ngroup G: A, B`, 'LR');
+  assert.deepEqual(edgeLabelNodeClashes(svg), []);
+});
+
+test('flow: each forced line still wraps by width, and the node grows by the extra lines', () => {
+  const long = 'long '.repeat(40).trim();
+  const lines = textLines(render('flow', `[${long}${BR}Short] -> Done`));
+  const wrapped = lines.slice(0, lines.indexOf('Short'));
+  assert.ok(wrapped.length > 1);
+  for (const line of wrapped) assert.ok(measure(line, 13) <= 150, `line too wide: ${line}`);
+  const height = (svg) => Number(svg.match(/<rect class="am-node-shape"[^>]*height="([\d.]+)"/)[1]);
+  assert.ok(height(render('flow', `[Short${BR}Short] -> Done`)) > height(render('flow', 'Short -> Done')));
+});
+
+test('flow: the same \\n node text on two lines is one node', () => {
+  const label = `Scan job${BR}AutoSignUpScanJob`;
+  const source = `[${label}] -> First\n[${label}] -> Second`;
+  const model = parseFlow(source);
+  assert.deepEqual([...model.nodes.keys()], [label, 'First', 'Second']);
+  const svg = render('flow', source);
+  assert.equal((svg.match(/class="am-node /g) || []).length, 3);
+});
+
 test('sequence: Korean and Thai messages wrap the same way', () => {
   assert.deepEqual(textLines(render('sequence', 'A -> B: 데이터베이스 연결을 확인하고 재시도합니다')), ['A', 'B', '데이터베이스 연결을 확인하고', '재시도합니다']);
   const thai = textLines(render('sequence', 'A -> B: ตรวจสอบการเชื่อมต่อฐานข้อมูลแล้วลองอีกครั้ง'));
@@ -393,6 +484,11 @@ test('er: a FK field implies the many-to-one relationship, and a written line re
   const replaced = relationships(parseEr('Order\n  user_id FK -> User\nUser\n  id PK\nUser 1--* Order: places'));
   assert.equal(replaced.length, 1);
   assert.deepEqual([replaced[0].from, replaced[0].to, replaced[0].label], ['User', 'Order', 'places']);
+});
+
+test('er: two relationships from one entity keep the order of the entities they end at', () => {
+  const src = 'P\nQ\nM\nX\nY\nZ\nP 1--* M\nQ 1--* M\nP 1--* X\nQ 1--* Y\nX 1--* Z\nY 1--* Z';
+  for (const dir of ['LR', 'RL', 'TB', 'BT']) assert.equal(crossings(render('er', src, dir), 6), 0, dir);
 });
 
 test('er: draws a box per entity with its fields, and an end per cardinality', () => {

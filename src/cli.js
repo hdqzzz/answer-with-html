@@ -1,4 +1,4 @@
-// am CLI: render / patch / video / lint / theme / list / help. main() takes injected streams and environment variables, for testing.
+// am CLI: render / patch / video / export / lint / theme / list / help. main() takes injected streams and environment variables, for testing.
 
 import { parseArgs } from 'node:util';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, statSync } from 'node:fs';
@@ -6,7 +6,7 @@ import { VERSION } from './assets.js';
 import { join, resolve, dirname, basename, extname, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import { renderDoc, RenderError, LintError } from './render.js';
-import { parseDoc, ParseError, DraftErrors, CHOICES, VOICES } from './parse.js';
+import { parseDoc, ParseError, DraftErrors, CHOICES, VOICES, frontmatterValue } from './parse.js';
 import { lintDoc, formatWarning } from './lint/ste.js';
 import { resolveLanguage } from './language.js';
 import { COMPONENTS } from './components/index.js';
@@ -17,8 +17,9 @@ import { checkColors, externalResourceWarnings, COLOR_TOKENS } from './themes/ch
 import { FONT_NAMES } from './themes/font-list.js';
 import { THEME_SELECTORS } from './themes/selectors.js';
 import { renderVideo } from './video/render.js';
-import { pickProvider, TtsError } from './video/tts.js';
+import { pickProvider, audioMapProvider, TtsError } from './video/tts.js';
 import { exportMp4, exportWebm, ExportError } from './video/export.js';
+import { exportPage, isHtmlPage } from './export.js';
 import { afterRender, clean, usage, mb, CLEAN } from './housekeeping.js';
 import { runUpdateCheck, pageUpdate } from './update.js';
 import { amHome, readConfig, setConfig, resetConfig, configChoices, CONFIG_KEYS, ConfigError } from './config.js';
@@ -42,9 +43,11 @@ Usage:
                       [--template sheet|doc] [--style off|80|strict] [--mode auto|light|dark]
   am patch  <html> --panel <title> [file|-] [--from file] [--theme …] [--no-open]
                                                   replace one ## panel of an existing page and overwrite that HTML in place
-  am video  <file|->  [-o <file>] [--voice auto|elevenlabs|local|system|off] [--mp4] [--webm] [--no-open]
-                      [--theme ${['auto', ...themeNames('video')].join('|')}] [--mode light|dark]
+  am video  <file|->  [-o <file>] [--voice auto|elevenlabs|local|system|off | --audio-map <file.json>]
+                      [--mp4] [--webm] [--no-open] [--theme ${['auto', ...themeNames('video')].join('|')}] [--mode light|dark]
                                                   render a video draft into a 3b1b-style explainer video player page (--mp4 / --webm also save a video file)
+  am export <page.html> [--pdf <file.pdf>] [--png <dir>]
+                        export a rendered page as an A4 PDF and/or as PNG slices for a chat app (needs Chrome)
   am lint   <file|->  [--style off|80|strict]     run only the STE controlled-writing check
   am config [set <key> <value> | get <key> | reset [key]]  show or change settings
   am serve  [--port 8765] [--lan | --tailscale | --public-url <origin>] [--secret-file <path>]  serve pages over http on 127.0.0.1 (--lan: on the local network; --tailscale: on your tailnet only); am render then prints a link:
@@ -53,7 +56,7 @@ Usage:
   am theme add <name> [--use] [--force]           install a theme from the catalog (answer-me-with-html.com/themes/); --use makes it the default
   am theme list [--remote] | update [name] | remove <name>  show, update or delete the themes in your themes folder
   am list                                         list templates, themes and components
-  am help [component|format|code|image|video|patch|theme]  show component syntax / page draft format / code block / image syntax / video draft format / patch / theme usage
+  am help [component|format|code|image|video|patch|theme|export]  show component syntax / page draft format / code block / image syntax / video draft format / patch / theme / export usage
 
 - A file argument of - reads from stdin (good for heredoc: am render - <<'EOF' ... EOF).
 - -o names an output file, for example -o page.html; it does not name a folder.
@@ -69,6 +72,7 @@ template: sheet        # sheet: blueprint board (default, multi-panel grid) | do
 theme: auto            # auto (default): paper for the doc template or text only, blueprint with diagrams | blueprint | shadcn | paper; switchable in the page
 title: Page title      # or use "# Title" as the first line of the body
 subtitle: Subtitle     # optional
+file: tcp-handshake    # optional: the file name, ASCII letters and digits; use it when the title has few or none
 cols: 3                # number of sheet grid columns, default 3
 style: 80              # STE check strictness: off | 80 (default, warn only) | strict (no page if it fails)
 mode: auto             # auto follows the system | light | dark
@@ -79,12 +83,13 @@ Intro (optional, shown below the title)
 ## A Panel title {span=2 meta="top-right note"}
 Plain Markdown: paragraphs, lists, tables, quotes, inline code...
 Write ok / no / warn in a table cell (text may follow, e.g. "ok approved") to get a ✓ / ✗ / ! badge.
+After a table, {table sort} enables header sorting, {table filter} adds a text filter; combine them as {table sort filter}.
 
 \`\`\`flow LR          ← fence language = component name, followed by component arguments
 A -> B
 \`\`\`
 
-\`\`\`html             ← html / svg fences are embedded as-is (escape hatch)
+\`\`\`html             ← html / svg fences are embedded as-is; a script in an html fence does not run (render warns)
 <div>any content</div>
 \`\`\`
 
@@ -164,6 +169,7 @@ const VIDEO_FORMAT = `Video draft format (am video)
 ---
 title: TCP three-way handshake
 subtitle: Why three steps      # optional, subtitle on the title card
+file: tcp-handshake            # optional: the file name, as in a page draft
 theme: blueprint               # blueprint: drawing style (auto picks it; follows the theme in am config) | shadcn: cards | 3b1b: dark
 mode: light                    # light | dark (blueprint + dark is a dark-blue drawing)
 ---
@@ -180,7 +186,7 @@ Client -> Server: ACK
 > The client sends ACK, and the connection is open.
 
 - "## " starts a scene; a scene holds components or Markdown (the picture), and lines that start with > are narration (one beat per line).
-- When narration line N plays, step N of the picture appears: in flow / er / sequence / tree each source line is one step;
+- When narration line N plays, step N of the picture appears: in flow / state / er / sequence / tree each source line is one step;
   timeline, limits, chart rows, table rows, list items and paragraphs step item by item. With more steps than narration lines, the steps are spread across the lines;
   with more narration lines than steps, the extra first lines act as an opening and show nothing new.
 - Write [name] in narration: the camera zooms in on the element with that name and highlights it, and the word turns yellow in the caption.
@@ -197,6 +203,11 @@ Client -> Server: ACK
   up to AM_TTS_ATTEMPTS times per line (default 3; set 1 to turn this off).
   Example: AM_TTS_URL=http://127.0.0.1:8000 AM_TTS_MODEL=mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit \
       AM_TTS_VOICE=vivian am video draft.md --voice local
+  --audio-map lines.json reads ready-made audio from a JSON object of narration line to audio file, for example
+  {"First the client sends SYN.":"audio/01.mp3"}. Relative audio paths start at the map file's folder. Keys ignore > and [ ]
+  markers and extra whitespace. Non-WAV audio needs ffmpeg; every line needs an entry and every audio file must exist.
+  --audio-map cannot be combined with an explicit --voice; when a map is given, the configured voice is ignored.
+  Example: am video draft.md --audio-map lines.json
 - Output goes to ~/.answer-me-with-html/videos/. The player carries a chapter strip (a chip jumps into that scene), a
   speed button (0.5x to 2x) and an export button that saves the same video through the browser, without a terminal.
 - --mp4 also saves a 1080p .mp4 next to the page (H.264 + AAC; needs ffmpeg; about 1.3 times the video length).
@@ -226,8 +237,11 @@ export async function main(argv, io = {}) {
         style: { type: 'string' },
         mode: { type: 'string' },
         voice: { type: 'string' },
+        'audio-map': { type: 'string' },
         mp4: { type: 'boolean' },
         webm: { type: 'boolean' },
+        pdf: { type: 'string' },
+        png: { type: 'string' },
         panel: { type: 'string' },
         from: { type: 'string' },
         days: { type: 'string' },
@@ -261,6 +275,7 @@ export async function main(argv, io = {}) {
     case 'render': return withSource(arg, io, fail, (src, baseDir, from) => cmdRender(src, opts, ctx, baseDir, from));
     case 'patch': return cmdPatch(arg, rest[0], opts, ctx);
     case 'video': return withSource(arg, io, fail, (src, _baseDir, from) => cmdVideo(src, opts, ctx, from));
+    case 'export': return cmdExport(arg, opts, ctx);
     case 'lint': return withSource(arg, io, fail, (src) => cmdLint(src, opts, { print, fail }));
     case 'config': return cmdConfig([arg, ...rest].filter((x) => x !== undefined), ctx);
     case 'theme': return cmdTheme(arg, rest[0], opts, ctx);
@@ -330,11 +345,11 @@ async function cmdRender(src, opts, ctx, baseDir, from) {
   await loadMath(src);
   let result;
   try {
-    result = renderDoc(src, { theme: opts.theme, template: opts.template, style: opts.style, mode: opts.mode }, { theme, mode, style }, { themes: ctx.themes, baseDir, codeDir: ctx.io.cwd ?? process.cwd(), update: updateFor(config, ctx), closeAfter: config.values.close_after_reply, scale: config.values.scale });
+    result = renderDoc(src, { theme: opts.theme, template: opts.template, style: opts.style, mode: opts.mode }, { theme, mode, style }, { themes: ctx.themes, baseDir, codeDir: ctx.io.cwd ?? process.cwd(), update: updateFor(config, ctx), closeAfter: config.values.close_after_reply, colophon: config.values.colophon, scale: config.values.scale });
   } catch (e) {
     return reportDraftError(e, src, from, ctx);
   }
-  const file = outputPath('pages', result.meta.title, opts, ctx);
+  const file = outputPath('pages', nameSource(result.meta), opts, ctx);
   if (!file) return 2;
   const written = emit(result, file, ctx, { fallback: opts.out ? undefined : 'pages' });
   if (!written) return 1;
@@ -363,10 +378,20 @@ function draftTitle(src) {
   return m?.[1] ?? '';
 }
 
+// What a default file name is made from: the draft's file: when it has an ASCII letter or digit (a title with none gives page-<time>),
+// otherwise the title. slug() then applies the same rule to either.
+function nameSource({ file, title }) {
+  return /[A-Za-z0-9]/.test(String(file ?? '')) ? file : title;
+}
+
+function draftName(src) {
+  return nameSource({ file: frontmatterValue(src, 'file'), title: draftTitle(src) });
+}
+
 // The absolute path of the saved draft, or null when neither the data directory nor the temporary folder can take it. Saving is a side
 // step: a page may already be written, so any file-system error only moves on to the next folder.
 function saveDraft(src, { env, io }) {
-  const name = `${slug(draftTitle(src))}-${stamp(new Date(io.now?.() ?? Date.now()))}.md`;
+  const name = `${slug(draftName(src))}-${stamp(new Date(io.now?.() ?? Date.now()))}.md`;
   const home = amHome(env);
   const folders = [() => { ensureHome(home); return draftsDir(home); }, () => draftsDir(checkedTempHome({ create: true }))];
   for (const folder of folders) {
@@ -437,6 +462,25 @@ function pagePath(arg, { env, io }) {
   return folders.includes(dirname(path)) && basename(path).endsWith('.html') ? path : false;
 }
 
+const EXPORT_HELP = `Export a rendered page as an A4 PDF and/or PNG slices for a chat app
+
+Usage:
+  am export <page.html> --pdf <file.pdf>
+  am export <page.html> --png <dir>
+  am export <page.html> --pdf <file.pdf> --png <dir>
+
+- The page must be an existing .html file, opened as a file:// URL; am export does not change it.
+- --pdf writes an A4 PDF with the page's own print rules (@media print), background colors, no header and no footer.
+- --png writes <dir>/<page-name>-1.png, -2.png ... at 1200 CSS px wide and 2x (2400 px), in slices no taller than 1800 CSS px.
+  A cut falls in a gap between panels; a panel taller than 1800 CSS px is cut at the limit, so its text can span two PNG files.
+  The toolbar, the reply and remark controls and the new-version notice are left out.
+  A later export into the same folder removes <page-name>-<n>.png slices it did not write again. Other files stay.
+  A slice that is the input page, or that cannot be removed, is left in place and reported.
+  Run one export of a page into a folder at a time. Two at once can remove each other's slices.
+- Give both flags to write both; at least one is required. The folder for --png is created when missing.
+- Needs Chrome / Chromium / Edge, like am video --mp4 / --webm. Set AM_CHROME when it is not in a usual place.
+- A PDF or PNG is a picture: reply, remarks, the theme switch and the Before/After switches do not work in it.`;
+
 const PATCH_HELP = `Replace one panel of a rendered page in place
 
 Usage:
@@ -445,8 +489,8 @@ Usage:
   am patch <html-file> --panel <title> -
 
 - Reads the source draft from the hidden <textarea id="am-source"> in <html-file>.
-- --panel matches a ## section's title, its letter ID, or "ID title".
-- The new draft comes from stdin or from --from / a second file argument: it may include the ## heading or only the panel body.
+- --panel matches a ## section's title, its letter ID, or "ID title". An explicit ID (## B Title) stays the same when the title changes; an automatic ID moves when a panel before it is added or removed.
+- The new draft comes from stdin or from --from / a second file argument: it may include the ## heading or only the panel body. A new ## heading renames the panel.
 - Renders again with the current renderer and overwrites the same HTML path; it writes no new timestamped file.
 - Keeps the page's template, theme, light/dark mode and STE style (recorded on the page's root tag when it was made). Later config changes do not apply to patched pages; to change them add --theme / --mode / --style.
 - If the panel is not found, or the page has no #am-source, the exit code is non-zero and the file is not changed.`;
@@ -455,7 +499,7 @@ const THEME_HELP = `Install a ready-made theme from the catalog at answer-me-wit
 
 am theme add <name> [--use] [--force]
 - Reads the catalog, downloads themes/<name>.json, checks its size, sha256, colors and links, and saves it to ~/.answer-me-with-html/themes/<name>.json.
-  Only catalog names work, not URLs or paths. --use also makes it the default theme (the same as am config set theme <name>).
+  Only catalog names work, not URLs or paths. --use also makes it the default theme (the same as am config set theme <name>); without it, the theme is still in every new page's theme picker.
 - A file of that name that is not the catalog's is never overwritten (it may be your own theme): add --force to replace it.
 - It asks nothing else. The catalog address can be moved with the AM_CATALOG_URL environment variable (an https URL of an index.json; http only for localhost).
 am theme list [--remote]     built-in themes, then your themes with version and source (catalog, catalog edited, local) and files that cannot be used; --remote also reads the catalog and marks updates and themes you do not have
@@ -483,7 +527,7 @@ Pick it like a built-in theme: theme: notes in the draft, --theme notes, or am c
 - tokens: light and dark must each set every color: ${COLOR_TOKENS.join(' ')}.
   common holds values shared by both; --radius --shadow --bw --head-font --font-sans --font-mono are optional.
 - Fonts: name installed fonts only; the default font stack is added as the fallback.
-- font (optional): a font this tool ships, embedded in a page rendered with the theme: ${FONT_NAMES.join(' | ')}. Use it in css, for example & .am-head h1 { font-family: "Bangers", Impact, sans-serif; }.
+- font (optional): a font this tool ships, embedded once in every page that carries the theme: ${FONT_NAMES.join(' | ')}. Use it in css, for example & .am-head h1 { font-family: "Bangers", Impact, sans-serif; }.
   An older version ignores the field and shows the fallback font.
 - requires (optional): the oldest version of this tool the theme supports, as x.y.z. A newer requirement makes this tool skip the theme.
 - css (optional): start every selector with &, which stands for the theme's root, so the rules apply only under this theme.
@@ -491,10 +535,10 @@ Pick it like a built-in theme: theme: notes in the draft, --theme notes, or am c
   Keep the file self-contained: no url() or image-set() to http(s) or //, no @import, no @font-face, no backslash escapes. A link would send a request each time a page opens.
   am theme check warns about them; the catalog and am theme add reject them.
 - Diagram tokens (optional): node-fill node-stroke node-width node-radius node-shadow node-text, hi-fill hi-stroke hi-text, edge-color edge-width edge-label, actor-fill actor-stroke actor-text, note-fill note-stroke note-width note-radius, cluster-fill cluster-stroke, lifeline-color, series-1 series-2 series-3 series-4 series-5 series-6 (each with a -- prefix).
-  They restyle what is inside flow, sequence and er diagrams and tree boxes, and each defaults to today's look. The series tokens color the bars, lines and slices of a chart: a fixed palette is the default (a light set and a dark set); a series color below 3:1 against --paper in light or dark gives a warning. Widths and radii are a number or px / em (a bare number is px);
+  They restyle what is inside flow, state, sequence and er diagrams and tree boxes, and each defaults to today's look. The series tokens color the bars, lines and slices of a chart: a fixed palette is the default (a light set and a dark set); a series color below 3:1 against --paper in light or dark gives a warning. Widths and radii are a number or px / em (a bare number is px);
   --node-shadow is none or drop-shadow(...), like drop-shadow(3px 3px 0 #111). Do not write diagram selectors in css. There is no token for fonts: diagram text is measured for the sans font.
 - video (optional): video-only variables (--v-stage, --v-title-font, --v-cap-fg, --v-cap-bg, --v-glow) and & css for am video.
-- A page carries the built-in themes plus its own theme, so it opens anywhere; readers without your fonts see the fallback.
+- A page carries the built-in themes plus every installed user theme, so the toolbar can switch to any of them and the page opens anywhere; readers without your fonts see the fallback.
 - A file with problems is skipped with a warning; am theme check <name|file.json> tells you why.
 
 am theme check <name|file.json> [--no-open]
@@ -564,18 +608,23 @@ async function cmdPatch(htmlArg, fromArg, opts, ctx) {
   let result;
   try {
     if (video) {
+      if (!validAudioMap(opts, fail)) return 2;
       // A voiced page keeps its original voice (data-voice; config when an old page has none); a silent video made with --voice off stays silent.
-      // An explicit --voice from the user wins.
+      // An explicit --voice or --audio-map from the user wins. A mapped page needs its map again unless the user picks another source.
       const voice = opts.voice ?? (page.voiced ? page.voice ?? config.values.voice : 'off');
-      if (!validVoice(voice, fail)) return 2;
+      if (page.voice === 'audio-map' && opts.voice === undefined && opts['audio-map'] === undefined) {
+        fail('✗ This video uses an audio map; pass --audio-map <file.json> or choose another source with --voice');
+        return 2;
+      }
+      if (opts['audio-map'] === undefined && !validVoice(voice, fail)) return 2;
       // Video pages also keep the original page's theme, mode and STE strictness (e.g. 3b1b / --style off); this command's arguments win.
       result = await buildVideo(patched, voice, { ...opts, theme: overrides.theme, mode: overrides.mode, style: overrides.style, previousLanguage: page.lang }, config, ctx);
     } else {
-      result = renderDoc(patched, overrides, { theme, mode, style }, { themes: ctx.themes, previousLanguage: page.lang, baseDir: cwd, codeDir: cwd, knownImages: readEmbeddedImages(html), knownCode: readEmbeddedCode(html), update: updateFor(config, ctx), closeAfter: config.values.close_after_reply, scale: page.scale });
+      result = renderDoc(patched, overrides, { theme, mode, style }, { themes: ctx.themes, previousLanguage: page.lang, baseDir: cwd, codeDir: cwd, knownImages: readEmbeddedImages(html), knownCode: readEmbeddedCode(html), update: updateFor(config, ctx), closeAfter: config.values.close_after_reply, colophon: config.values.colophon, scale: page.scale });
     }
   } catch (e) {
     if (e instanceof TtsError) {
-      fail(`✗ Voice-over failed: ${e.message}. Add --voice off for captions only`);
+      fail(`✗ Voice-over failed: ${e.message}. ${opts['audio-map'] === undefined ? 'Add --voice off' : 'Remove --audio-map and add --voice off'} for captions only`);
       return 1;
     }
     return reportError(e, fail);
@@ -584,11 +633,52 @@ async function cmdPatch(htmlArg, fromArg, opts, ctx) {
   return finish(file, opts, config, ctx);
 }
 
+async function cmdExport(arg, opts, ctx) {
+  const { fail, print, env, io } = ctx;
+  const empty = opts.pdf === '' ? '--pdf' : opts.png === '' ? '--png' : null;
+  if (empty) {
+    fail(`✗ ${empty} needs a path`);
+    return 2;
+  }
+  if (opts.pdf === undefined && opts.png === undefined) {
+    fail('✗ export needs --pdf <file.pdf> or --png <dir>\n\n  am export <page.html> --pdf <file.pdf> | --png <dir>');
+    return 2;
+  }
+  if (!arg) {
+    fail('✗ Missing the page argument: pass the .html file am render wrote');
+    return 2;
+  }
+  const cwd = io.cwd ?? process.cwd();
+  const file = resolve(cwd, arg);
+  let isPage;
+  try {
+    isPage = isHtmlPage(file);
+  } catch (e) {
+    fail(`✗ Cannot read the page ${arg}: ${e.message}`);
+    return 2;
+  }
+  if (!isPage) {
+    fail(`✗ ${arg} is not an existing .html file: am export takes a page am render wrote`);
+    return 2;
+  }
+  const pdf = opts.pdf === undefined ? undefined : resolve(cwd, opts.pdf);
+  const png = opts.png === undefined ? undefined : resolve(cwd, opts.png);
+  try {
+    await exportPage(file, { pdf, png, env, onFile: (f) => print(`✓ ${f}`), onWarn: (message) => fail(`! ${message}`) });
+    return 0;
+  } catch (e) {
+    if (!(e instanceof ExportError)) throw e;
+    fail(`✗ Export failed: ${e.message}`);
+    return 1;
+  }
+}
+
 async function cmdVideo(src, opts, ctx, from) {
   const { fail, print } = ctx;
+  if (!validAudioMap(opts, fail)) return 2;
   const config = loadConfig(ctx);
   const voice = opts.voice ?? config.values.voice;
-  if (!validVoice(voice, fail)) return 2;
+  if (opts['audio-map'] === undefined && !validVoice(voice, fail)) return 2;
   let file = opts.out ? outputPath('videos', '', opts, ctx) : null;
   if (opts.out && !file) return 2;
   let result;
@@ -596,10 +686,10 @@ async function cmdVideo(src, opts, ctx, from) {
     result = await buildVideo(src, voice, opts, config, ctx);
   } catch (e) {
     if (!(e instanceof TtsError)) return reportDraftError(e, src, from, ctx);
-    fail(`✗ Voice-over failed: ${e.message}. Add --voice off for captions only`);
+    fail(`✗ Voice-over failed: ${e.message}. ${opts['audio-map'] === undefined ? 'Add --voice off' : 'Remove --audio-map and add --voice off'} for captions only`);
     return 1;
   }
-  file ??= outputPath('videos', result.meta.title, opts, ctx);
+  file ??= outputPath('videos', nameSource(result.meta), opts, ctx);
   if (!file) return 2;
   const written = emit(result, file, ctx, { fallback: opts.out ? undefined : 'videos' });
   if (!written) return 1;
@@ -617,8 +707,23 @@ function validVoice(voice, fail) {
   return false;
 }
 
+function validAudioMap(opts, fail) {
+  if (opts['audio-map'] === undefined) return true;
+  if (!opts['audio-map'].trim()) {
+    fail('✗ --audio-map needs a JSON file path');
+    return false;
+  }
+  if (opts.voice !== undefined) {
+    fail('✗ --audio-map cannot be used with --voice; choose one narration source');
+    return false;
+  }
+  return true;
+}
+
 async function buildVideo(src, voice, opts, config, { fail, env, io, themes }) {
-  const provider = io.ttsProvider !== undefined ? io.ttsProvider : pickProvider(voice, env);
+  const provider = opts['audio-map'] !== undefined
+    ? audioMapProvider(resolve(io.cwd ?? process.cwd(), opts['audio-map']))
+    : io.ttsProvider !== undefined ? io.ttsProvider : pickProvider(voice, env);
   const result = await renderVideo(src, {
     provider,
     cacheDir: provider ? narrationCache(amHome(env)) : undefined,
@@ -691,7 +796,16 @@ function outputPath(dir, title, opts, { env, io, fail }) {
     }
     return file;
   }
-  return join(amHome(env), dir, `${slug(title)}-${stamp(new Date(io.now?.() ?? Date.now()))}.html`);
+  const file = join(amHome(env), dir, `${slug(title)}-${stamp(new Date(io.now?.() ?? Date.now()))}.html`);
+  return opts.replace === undefined ? unusedPagePath(file) : file;
+}
+
+// A default name that does not exist yet: a second page in the same second gets -2, -3 … before .html.
+function unusedPagePath(file) {
+  for (let n = 1; ; n++) {
+    const candidate = n === 1 ? file : file.replace(/\.html$/, `-${n}.html`);
+    if (!existsSync(candidate)) return candidate;
+  }
 }
 
 // Write a page. A page inside the data directory makes it private first; a page saved elsewhere (-o) leaves its folder alone.
@@ -1042,14 +1156,14 @@ function cmdTheme(action, target, opts, ctx) {
   if (!theme.scope.includes('page')) return 0;
 
   const themes = isFile ? loadThemes(amHome(env), { extra: path }) : ctx.themes;
+  const config = readConfig(env, themes);
   const files = ['light', 'dark'].map((mode) => {
-    const result = renderDoc(specimenDraft(name, mode), { theme: name, mode, style: 'off' }, {}, { themes });
+    const result = renderDoc(specimenDraft(name, mode), { theme: name, mode, style: 'off' }, {}, { themes, colophon: config.values.colophon });
     const file = outputPath('pages', `theme-${name}-${mode}`, {}, ctx);
     writePage(file, result.html, env);
     print(`✓ ${file}`);
     return file;
   });
-  const config = readConfig(env, themes);
   if (shouldOpen(opts, env, config.values)) files.forEach((f) => (io.open ?? openFile)(f));
   return 0;
 }
@@ -1060,12 +1174,13 @@ function cmdHelp(name, { print, fail }) {
   if (name === 'image') return print(IMAGE_HELP), 0;
   if (name === 'code') return print(CODE_HELP), 0;
   if (name === 'video') return print(VIDEO_FORMAT), 0;
+  if (name === 'export') return print(EXPORT_HELP), 0;
   if (name === 'patch') return print(PATCH_HELP), 0;
   if (name === 'theme') return print(THEME_HELP), 0;
   if (name === 'html' || name === 'svg') return print(RAW_HELP.replace(/LANG/g, name)), 0;
   const comp = COMPONENTS.get(name);
   if (!comp) {
-    fail(`✗ No component named "${name}". Available: ${[...COMPONENTS.keys()].join(', ')}, html, svg, format, code, image, video, patch, theme`);
+    fail(`✗ No component named "${name}". Available: ${[...COMPONENTS.keys()].join(', ')}, html, svg, format, code, image, video, export, patch, theme`);
     return 2;
   }
   print(`${comp.name} — ${comp.summary}\n\n${comp.syntax}\n\nExample:\n${comp.example}`);
@@ -1073,8 +1188,12 @@ function cmdHelp(name, { print, fail }) {
 }
 
 function slug(title) {
-  const s = String(title || 'page').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-  return s || 'page';
+  const s = String(title || '').replace(/[^A-Za-z0-9]+/g, '-').toLowerCase().replace(/^-+|-+$/g, '');
+  if (!s) return 'page';
+  if (s.length <= 24) return s;
+  const cut = s.slice(0, 24);
+  const at = cut.lastIndexOf('-');
+  return at > 0 ? cut.slice(0, at) : cut;
 }
 
 function stamp(d) {

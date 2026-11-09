@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { devtoolsUrl, connect, exportMp4, exportWebm, findChrome, ExportError } from '../src/video/export.js';
+import { waitForLoad } from '../src/chrome.js';
 import { renderVideo } from '../src/video/render.js';
 import { SAMPLE_RATE } from '../src/video/tts.js';
 
@@ -50,10 +51,23 @@ test('devtoolsUrl: rejects at once when Chrome exits before it listens, and show
   assert.ok(Date.now() - started < 5000, 'must not wait for the start timeout');
 });
 
+test('waitForLoad: rejects when the page load event never arrives', async () => {
+  await assert.rejects(waitForLoad(new Promise(() => {}), 20),
+    (e) => e instanceof ExportError && /did not finish loading/.test(e.message));
+});
+
+test('waitForLoad: resolves when the page load event arrives', async () => {
+  let resolved = false;
+  await waitForLoad(Promise.resolve().then(() => { resolved = true; }), 1000);
+  assert.equal(resolved, true);
+});
+
 test('devtoolsUrl: the start timeout shows the stderr Chrome printed so far', async () => {
   const chrome = fakeChrome('process.stderr.write("still loading\\n"); setTimeout(() => {}, 60000)');
   try {
-    await assert.rejects(devtoolsUrl(chrome, 300),
+    // The fake Chrome is a Node process that must start and print before the timeout; 300 ms was too short on a busy
+    // machine while other test files run at the same time.
+    await assert.rejects(devtoolsUrl(chrome, 3000),
       (e) => e instanceof ExportError && /did not start in time/.test(e.message) && /still loading/.test(e.message));
   } finally {
     chrome.kill();

@@ -380,6 +380,13 @@ Body text for comparison.
 #### Detail
 ##### Note
 ###### Further detail
+\`\`\`api
+GET /users/{id}
+path
+  id string required
+response 200 User
+  name string required
+\`\`\`
 `;
   const selectors = ['.am-head h1', '.am-panel-head h2', '.am-md h3', '.am-md h4', '.am-md h5', '.am-md h6'];
   const catalog = fileURLToPath(new URL('../marketplace/themes/', import.meta.url));
@@ -406,9 +413,10 @@ Body text for comparison.
               const style = getComputedStyle(document.querySelector(selector));
               return { size: parseFloat(style.fontSize), weight: Number(style.fontWeight) };
             };
-            return { body: read('.am-md p'), headings: ${JSON.stringify(selectors)}.map(read) };
+            return { body: read('.am-md p'), headings: ${JSON.stringify(selectors)}.map(read), apiHeading: read('.am-api-section h4'), apiBody: read('.am-api tbody td') };
           })()`);
           const context = `${template}/${theme}/${mode}/${scale}`;
+          assert.ok(sizes.apiHeading.size >= Math.max(sizes.body.size, sizes.apiBody.size), `${context}: API section headings must not be smaller than body text or fields`);
           sizes.headings.forEach((heading, i) => {
             assert.ok(heading.size >= sizes.body.size, `${context}: h${i + 1} (${heading.size}px) is smaller than body (${sizes.body.size}px)`);
             if (Math.abs(heading.size - sizes.body.size) < 0.01) {

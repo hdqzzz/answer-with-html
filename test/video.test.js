@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { parseVideo, estimateSeconds, buildTimeline, allBeats, TIMING } from '../src/video/script.js';
 import { renderVideo, captionHtml, formatClock } from '../src/video/render.js';
 import { readWav, wav, mixTrack, trimSilence, synthAll, pickProvider, parseMacVoices, macVoiceFor, parseEspeakVoices, espeakVoiceFor, TtsError, SAMPLE_RATE } from '../src/video/tts.js';
 import { findChrome, connect, devtoolsUrl } from '../src/video/export.js';
+import { chromePaths } from '../src/chrome.js';
 import { renderDoc } from '../src/render.js';
 import { ParseError } from '../src/parse.js';
 import { COMPONENTS } from '../src/components/index.js';
@@ -586,13 +587,13 @@ function sink() {
 
 // Without ttsProvider, use null (captions only); an explicit undefined runs the real voice selection.
 async function run(args, opts = {}) {
-  const { stdin = '', env = {} } = opts;
+  const { stdin = '', env = {}, now } = opts;
   const ttsProvider = 'ttsProvider' in opts ? opts.ttsProvider : null;
   const out = sink();
   const err = sink();
   const code = await main(args, {
     stdout: out.stream, stderr: err.stream, stdin: Readable.from([stdin]),
-    env: { AM_NO_OPEN: '1', AM_HOME: dir, ...env }, cwd: dir, ttsProvider,
+    env: { AM_NO_OPEN: '1', AM_HOME: dir, ...env }, cwd: dir, ttsProvider, now,
   });
   return { code, out: out.text, err: err.text };
 }
@@ -600,9 +601,34 @@ async function run(args, opts = {}) {
 test('cli video: writes to AM_HOME/videos and prints scenes, narration, duration and voice', async () => {
   const r = await run(['video', '-'], { stdin: SRC });
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /✓ .+videos[\\/]握手-.+\.html/);
+  assert.match(r.out, /✓ .+videos[\\/]page-.+\.html/);
   assert.match(r.out, /2 scenes · 4 beats · [\d.]+s · voice: none/);
   assert.equal(readdirSync(join(dir, 'videos')).length, 1);
+});
+
+test('cli video: file: in the front matter names the video, as it names a page', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'am-video-file-name-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  assert.match(SRC, /^---\n/);
+  const r = await run(['video', '-'], { stdin: SRC.replace(/^---\n/, '---\nfile: tcp handshake\n'), env: { AM_HOME: home } });
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /✓ .+videos[\\/]tcp-handshake-\d{8}-\d{6}\.html/);
+});
+
+test('cli video: a second default video in the same second gets -2 and keeps both', async (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'am-video-same-second-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const now = new Date(2026, 0, 2, 3, 4, 5).getTime();
+  const first = await run(['video', '-', '--voice', 'off'], { stdin: SRC, env: { AM_HOME: home }, now: () => now });
+  const second = await run(['video', '-', '--voice', 'off'], { stdin: SRC, env: { AM_HOME: home }, now: () => now });
+  assert.equal(first.code, 0, first.err);
+  assert.equal(second.code, 0, second.err);
+  const a = first.out.match(/^✓ (.+\.html)$/m)[1];
+  const b = second.out.match(/^✓ (.+\.html)$/m)[1];
+  assert.equal(basename(a), 'page-20260102-030405.html');
+  assert.equal(basename(b), 'page-20260102-030405-2.html');
+  assert.ok(existsSync(a));
+  assert.ok(existsSync(b));
 });
 
 test('cli video: the output names the voice; an invalid voice is an error', async () => {
@@ -666,6 +692,13 @@ test('cli help video / config voice', async () => {
 
 test('findChrome: AM_CHROME wins', () => {
   assert.equal(findChrome({ AM_CHROME: '/x/chrome' }), '/x/chrome');
+});
+
+test('chromePaths: Windows includes the per-user Chrome install under LOCALAPPDATA', () => {
+  const local = 'C:\\Users\\me\\AppData\\Local';
+  assert.ok(chromePaths('win32', { LOCALAPPDATA: local }).includes(`${local}\\Google\\Chrome\\Application\\chrome.exe`));
+  assert.ok(!chromePaths('win32', {}).some((p) => p.includes('AppData\\Local')));
+  assert.ok(!chromePaths('darwin', { LOCALAPPDATA: local }).some((p) => p.includes('AppData')));
 });
 
 // ── End to end: real system TTS + Chrome + ffmpeg. Slow; runs only with AM_E2E=1. ──
@@ -816,14 +849,12 @@ const HEBREW = '---\ntitle: לחיצת יד\nlang: he\n---\n## א שלום\n```f
 const hebrewChapters = (n) => `---\nlang: he\n---\n${Array.from({ length: n }, (_, i) => `## פרק מספר ${i + 1} עם כותרת ארוכה\n- נקודה\n> משפט בפרק ${i + 1}.\n`).join('\n')}`;
 const englishChapters = (n) => `---\nlang: en\n---\n${Array.from({ length: n }, (_, i) => `## Chapter number ${i + 1} with a long title\n- point\n> A sentence in chapter ${i + 1}.\n`).join('\n')}`;
 
-test('e2e: a Hebrew video exports to MP4 and WebM at 1080p', { skip: !E2E, timeout: 180000 }, async () => {
+// One format is enough here: the MP4 and WebM tests above cover each encoder, and this one covers right-to-left text.
+test('e2e: a Hebrew video exports to MP4 at 1080p', { skip: !E2E, timeout: 180000 }, async () => {
   const mp4 = await run(['video', '-', '-o', 'e2e-he.html', '--mp4'], { stdin: HEBREW, ttsProvider: fakeProvider() });
   assert.equal(mp4.code, 0, mp4.err);
   const { execFileSync } = await import('node:child_process');
   assert.match(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height', '-of', 'csv=p=0', join(dir, 'e2e-he.mp4')], { encoding: 'utf8' }), /video,1920,1080/);
-  const webm = await run(['video', '-', '-o', 'e2e-he-webm.html', '--webm'], { stdin: HEBREW, ttsProvider: fakeProvider() });
-  assert.equal(webm.code, 0, webm.err);
-  assert.match(readFileSync(join(dir, 'e2e-he-webm.webm')).subarray(0, 64).toString('latin1'), /webm/);
 });
 
 for (const [name, draft] of [['Hebrew', hebrewChapters], ['English', englishChapters]]) {

@@ -1,6 +1,6 @@
 # Answer with HTML
 
-A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), based on upstream v0.5.10 (`f82dd6d`). The rendering engine and its MIT attribution are preserved.
+A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), updated through upstream `3e1da51` (v0.5.11 plus subsequent changes). The rendering engine and its MIT attribution are preserved.
 
 ## What this edition changes
 
@@ -8,7 +8,8 @@ A personally maintained edition of [QingYunA/answer-me-with-html](https://github
 - Keep key conditions, causal links and useful detail. Brevity should not remove the information needed to understand the answer.
 - Let readers expand supplementary sources, longer comparisons and implementation details with native disclosures.
 - Do not add evidence-status labels or review cards by default.
-- Use paper and light mode for everyday output, and omit the project promotion above the page title.
+- Use paper and light mode for everyday output; the upstream `colophon` setting defaults to off, so pages omit the project promotion above the title.
+- Preserve readable heading sizes and wrapping across themes, including API contract headings. Browser inspection of generated reports remains opt-in.
 
 The skill identifier remains `answer-me-with-html` for compatibility. Its entry point is [SKILL.md](skills/answer-me-with-html/SKILL.md); [the writing reference](skills/answer-me-with-html/references/readable-explanations.md) and [a complete Chinese draft](examples/clear-explanation.zh.md) show the approach.
 
@@ -315,7 +316,10 @@ The agent picks a component by the shape of the information:
 | Component | Good for |
 | :--- | :--- |
 | `flow` | Architecture, call chains, decision branches. Auto layout, with groups, decisions and databases |
+| `state` | A state machine: states and the events that move between them, with an initial state, a final state and self-transitions |
 | `er` | A data model: entities with their columns (PK / FK / UK) and crow's-foot relationships |
+| `class` | UML classes, attributes, methods, interfaces and relationships |
+| `api` | HTTP / RPC contracts: parameters, request and response fields, status codes |
 | `sequence` | Messages going back and forth between several parties over time |
 | `tree` | Folders, modules, taxonomies |
 | `timeline` | History, releases, phases |
@@ -326,7 +330,7 @@ The agent picks a component by the shape of the information:
 | `callout` | A conclusion, a tip, a warning |
 | `ask` | A decision you make on the page; the agent's suggestion has a tag; nothing starts selected |
 | Code block | Real code quoted from a file (`src=` `lines=`), or a sketch |
-| Table | Multi-way comparison. Write `ok` / `no` / `warn` in a cell to get ✓ ✗ ! |
+| Table | Multi-way comparison. Write `ok` / `no` / `warn` in a cell to get ✓ ✗ !; add `{table sort filter}` after the table for interactive sorting and filtering |
 
 The draft format (frontmatter, `span`, `rows`, raw `html` / `svg` blocks) and how to call the CLI without an agent are in the [reference](docs/reference.md). Full syntax for a component: `am help <component>`.
 
