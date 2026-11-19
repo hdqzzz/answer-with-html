@@ -376,6 +376,11 @@ test('render: diagram lightbox behavior — expand opens dialog, Esc, close butt
       this.el.setAttribute('class', list.join(' '));
     }
     contains(c) { return this.values().includes(c); }
+    toggle(c, force = !this.contains(c)) {
+      if (force) this.add(c);
+      else this.remove(c);
+      return force;
+    }
     values() { return (this.el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean); }
   }
 
@@ -698,4 +703,10 @@ test('render: file: is not shown in the page header meta line', () => {
 test('render: a doc page with fewer than 3 panels has no rail, and outline is not shown in the meta line', () => {
   assert.doesNotMatch(renderDoc(RAIL('outline: left\n', 2)).html, /<nav class="am-toc"/);
   assert.doesNotMatch(renderDoc(RAIL('outline: left\n')).html, /<div class="am-head-meta">/);
+});
+
+test('render: the copy-as-image button starts hidden with labels in the page language, and print hides it', () => {
+  const { html } = renderDoc('---\nlang: zh\n---\n## A\n中文');
+  assert.match(html, /<button class="am-btn am-btn--copy-image" type="button" data-am="copy-image" data-working="正在生成图片…" data-done="已复制 ✓" data-failed="复制失败" data-unavailable-browser="当前浏览器不支持导出图片。" data-unavailable-clipboard="当前浏览器不支持写入剪贴板。" data-unavailable-policy="当前预览窗口未开启剪贴板权限，不支持复制。" data-unverified-effect="当前浏览器导出效果可能不保证。" aria-label="复制为图片" title="复制为图片" hidden>复制为图片<\/button>/);
+  assert.match(html, /\.am-btn--copy-image \{ display: none !important; \}/);
 });

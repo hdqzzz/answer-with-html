@@ -1,6 +1,6 @@
 # Answer with HTML
 
-A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), updated through upstream `3e1da51` (v0.5.11 plus subsequent changes). The rendering engine and its MIT attribution are preserved.
+A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), updated through upstream `a675f83` (v0.6.1 plus subsequent changes). The rendering engine and its MIT attribution are preserved.
 
 ## What this edition changes
 
@@ -73,14 +73,10 @@ The projects other than the source engine informed the editorial approach; their
 
 <h1 align="center">Answer me with HTML</h1>
 
-<p align="center">
-  <b>Super Fast&nbsp;&nbsp;|&nbsp;&nbsp;ASD-STE100&nbsp;&nbsp;|&nbsp;&nbsp;Explainer Videos&nbsp;&nbsp;|&nbsp;&nbsp;One File, Offline</b>
-</p>
-
-
-<p align="center">
+<h1 align="center">Answer me with HTML</h1>
+<!-- <p align="center">
   <img src="docs/images/text-vs-page.png" alt="The same TCP question answered in plain text and with the skill: a wall of terminal text on the left, one readable page with diagrams on the right" width="100%">
-</p>
+</p> -->
 
 <p align="center">
   <b>An agent skill. Ask a hard question, get a page you can actually read instead of a wall of text.<br>The model writes about 1/8 of the tokens it would need to hand-write the HTML.</b>
@@ -94,7 +90,7 @@ The projects other than the source engine informed the editorial approach; their
 </p>
 
 <p align="center">
-  <a href="https://answer-me-with-html.com/"><b>Website</b></a> · <a href="#install">Install</a> · <a href="#what-you-ask-what-you-get">Examples</a> · <a href="#explainer-videos">Videos</a> · <a href="#always-on-mode-recommended">Always-on mode</a> · <a href="docs/reference.md">Reference</a> · <a href="README.zh-CN.md">简体中文</a>
+  <a href="https://answer-me-with-html.com/"><b>Website</b></a> · <a href="#install">Install</a> · <a href="#what-you-ask-what-you-get">Examples</a> · <a href="#explainer-videos">Videos</a> · <a href="#always-on-mode-recommended">Always-on mode</a> · <a href="docs/reference.md">Reference</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a>
 </p>
 
 Once installed, ask questions the way you always do:
@@ -242,7 +238,7 @@ Change settings with a slash command. There are no config files to edit by hand.
 | Any agent | `/answer-me-with-html config open off`, or just say "stop opening the browser" |
 | Terminal | `am config` to view, `am config set open off` to change, `am config reset` to restore defaults |
 
-The settings are `open` (open pages in the browser), `theme`, `mode` (light or dark), `style` (writing check), `scale` (text size on the page; diagrams and charts grow with it), `update_check`, `close_after_reply` (close the tab after the reply is copied) and `voice` (video narration). Defaults and values: [reference](docs/reference.md#settings).
+The settings are `open` (open pages in the browser), `theme`, `mode` (light or dark), `style` (writing check), `scale` (text size on the page; diagrams and charts grow with it), `pages_dir` (output folder for pages), `update_check`, `close_after_reply` (close the tab after the reply is copied) and `voice` (video narration). Defaults and values: [reference](docs/reference.md#settings).
 
 ## Always-on mode (recommended)
 
@@ -329,7 +325,7 @@ The agent picks a component by the shape of the information:
 | `state` | A state machine: states and the events that move between them, with an initial state, a final state and self-transitions |
 | `er` | A data model: entities with their columns (PK / FK / UK) and crow's-foot relationships |
 | `class` | UML classes, attributes, methods, interfaces and relationships |
-| `api` | HTTP / RPC contracts: parameters, request and response fields, status codes |
+| `api` | HTTP / RPC contracts and multi-endpoint diffs: parameters, requests, responses and status codes |
 | `sequence` | Messages going back and forth between several parties over time |
 | `tree` | Folders, modules, taxonomies |
 | `timeline` | History, releases, phases |
