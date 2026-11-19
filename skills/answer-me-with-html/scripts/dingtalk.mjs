@@ -1,7 +1,7 @@
 // Optional self-delivery for this edition. Authentication stays in dws; only preferences and receipts live here.
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -219,7 +219,7 @@ export async function deliver(file, {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === SCRIPT) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(SCRIPT)) {
   try {
     const { values, positionals } = parseArgs({ options: { format: { type: 'string' }, 'dry-run': { type: 'boolean' } }, allowPositionals: true });
     let result;

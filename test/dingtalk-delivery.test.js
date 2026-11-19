@@ -1,12 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { configure, deliver, exportFiles, settings, taskId } from '../skills/answer-me-with-html/scripts/dingtalk.mjs';
 
 const SELF = { success: true, result: [{ orgEmployeeModel: { corpId: 'example-corp', userId: 'self-user' } }] };
 const PROFILES = { success: true, profiles: [{ profile: 'example-corp', corpId: 'example-corp', isCurrent: true, isOrgCurrent: true }] };
+
+test('DingTalk: the installed symlink entry point executes without authentication when delivery is disabled', { skip: process.platform === 'win32' ? 'creating symlinks needs Windows privileges' : false }, (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'am-dingtalk-link-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const link = join(home, 'linked skill.mjs');
+  symlinkSync(fileURLToPath(new URL('../skills/answer-me-with-html/scripts/dingtalk.mjs', import.meta.url)), link);
+  const output = execFileSync(process.execPath, [link, 'config', 'status'], { encoding: 'utf8', env: { ...process.env, AM_HOME: home } });
+  assert.deepEqual(JSON.parse(output), { status: 'disabled', format: 'html', target: 'self', accountBound: false });
+});
 
 function fixture(t, overrides = {}) {
   const home = mkdtempSync(join(tmpdir(), 'am-dingtalk-'));
