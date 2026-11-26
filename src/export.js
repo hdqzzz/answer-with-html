@@ -17,10 +17,11 @@ const SETTLE_MS = 400;              // web fonts and the sheet planner need a be
 // The chrome that makes no sense in a picture. The page's print CSS hides the same controls for the PDF; this is the
 // screen-media list, plus the remark popover, new-version notice and table controls / sort indicators, which only @media print hides.
 const CHROME_CSS = `.am-toolbar, .am-reply, .am-reply-bar, .am-comment, .am-comment-btn, .am-remark-pop,
-.am-update, .am-btn--update, .am-btn--copy-image, .am-lightbox, .am-code-copy, .am-diagram-expand, .am-toc, .am-delta-switch, .am-table-controls {
+.am-update, .am-btn--update, .am-btn--export, .am-export, .am-lightbox, .am-code-copy, .am-diagram-expand, .am-toc, .am-delta-switch, .am-table-controls {
   display: none !important;
 }
-.am-table-sort::after { content: none !important; }`;
+.am-table-sort::after { content: none !important; }
+.am-head::before { display: none !important; }`;
 
 // Where to cut a page of pageHeight CSS px into slices no taller than maxHeight, without cutting through a panel or the
 // header when a gap exists. boxes are the page's block boxes ({top, bottom} in CSS px). A cut is moved up to the top of
@@ -165,6 +166,8 @@ export async function writePngSlices(page, htmlFile, folder, onWarn = () => {}, 
   await page.page('Emulation.setEmulatedMedia', { media: 'screen' });
   await settle(page);
   const layout = await page.evaluate(`(async () => {
+    // A steps block in a picture shows its numbers and its list, not the bar and the boxes of a reader's selection.
+    for (const el of document.querySelectorAll('.am-steps--live')) el.classList.remove('am-steps--live');
     await document.fonts.ready;
     await new Promise((r) => setTimeout(r, ${SETTLE_MS}));
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));

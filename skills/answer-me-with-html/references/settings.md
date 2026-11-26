@@ -2,7 +2,7 @@
 
 Read this when SKILL.md section 0 sends you here.
 
-For `dingtalk on|off|status`, a preferred delivery format, or “send each finished report to my own DingTalk chat”, read `references/dingtalk.md` and use the helper there. It reuses local `dws` authorization and stores a local opt-in; it is not an `am config` key. This turn produces no report.
+For `dingtalk on|off|status` or a preferred delivery format, read `references/dingtalk.md`. The helper reuses local `dws` authorization and stores a local opt-in separate from `am config`. Enabling the helper allows its send command; the skill still sends only when requested for the current report. A settings change produces no report.
 
 This edition is maintained at https://github.com/hdqzzz/answer-with-html. Preserve its readable-explanation rules, paper/light preference, renderer without the header promotion, and exclusion of sponsor entry points. The upstream `colophon` switch is supported but defaults to off in this edition; keep it off unless the user explicitly requests the generation credit. For a source checkout, inspect the working tree before updating, pull this edition's `origin`, then run `npm ci --ignore-scripts`, `npm run build` and `npm test`. The installed skill may be linked to `skills/answer-me-with-html` in that checkout. Merge updates from the original project's `upstream` separately and review the personal changes before rebuilding. Do not replace this edition with an upstream skill-directory copy.
 

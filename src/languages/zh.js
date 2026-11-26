@@ -15,14 +15,15 @@ export default {
     theme: '主题', modeLabel: '明暗',
     mode: { auto: '跟随系统', light: '亮', dark: '暗' },
     scale: { down: '缩小文字', up: '放大文字' },
-    image: {
-      button: '复制为图片', working: '正在生成图片…', done: '已复制 ✓', failed: '复制失败',
+    export: {
+      button: '导出', copy: '复制为图片', download: '下载 PNG', pdf: '保存为 PDF',
+      working: '正在生成…', copied: '已复制 ✓', saved: '已保存 ✓', failed: '导出失败',
       unavailableBrowser: '当前浏览器不支持导出图片。',
       unavailableClipboard: '当前浏览器不支持写入剪贴板。',
       unavailablePolicy: '当前预览窗口未开启剪贴板权限，不支持复制。',
       unverifiedEffect: '当前浏览器导出效果可能不保证。',
     },
-    copy: '复制源稿', done: '已复制 ✓', copyCode: '复制',
+    copy: '复制源稿', done: '已复制 ✓', failed: '复制失败', copyCode: '复制',
     update: { button: '新版本 {version}', current: '当前 {current}。生成此页时检测到新版本。', whatsNew: '这次更新：', run: '在终端运行：', agent: '或者告诉 Agent：', agentText: '更新 answer-me-with-html', notes: '查看更新内容' },
     live: { updated: '页面已更新', reload: '刷新' },
     reply: {
@@ -42,6 +43,7 @@ export default {
     chart: { name: '图表', data: '数据', value: '数值', share: '占比' },
     api: { path: '路径参数', query: '查询参数', headers: '请求头', request: '请求', response: '响应', field: '字段', type: '类型', description: '说明', requirement: '必填性', required: '必填', optional: '可选' },
     table: { filter: '筛选表格' },
+    steps: { prev: '← 上一步', next: '下一步 →', count: '第 {n} 步，共 {m} 步：{item}', hint: '点节点或行号；← → 切换，Esc 取消', hintExplain: '点节点或讲解；← → 切换，Esc 取消', bar: '步骤控制', idle: '共 {m} 步', node: '第 {n} 步：{item}', list: '步骤', line: '第 {n} 行', lines: '第 {from}-{to} 行' },
   },
   videoUi: {
     play: '播放', pause: '暂停', chapters: '章节', speed: '速度', export: '导出',

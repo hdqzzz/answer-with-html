@@ -13,7 +13,7 @@ import { parseDiff, diffRowsHtml, DiffError, DIFF_EXAMPLE } from './diff.js';
 export const MAX_CODE_LINES = 200;
 // Longer than this, readers skim past the block; the render warns but still writes the page.
 export const LONG_CODE_LINES = 40;
-const MAX_FILE_BYTES = 2 * 1024 * 1024;
+export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const KEYS = new Set(['src', 'lines', 'hl', 'title', 'start']);
 const DIFF_KEYS = new Set([...KEYS, 'file']);
 
@@ -73,15 +73,17 @@ export function parseCodeArgs(args, diff = false) {
 
 // The file under baseDir, or null when the path leaves it. Only the folder the agent works in is quoted, so a draft
 // (or a page someone sent, rendered again by am patch) cannot pull other files from the machine into a page.
-function localPath(ref, baseDir) {
+export function localPath(ref, baseDir) {
   const path = resolve(baseDir, ref);
   const rel = relative(baseDir, path);
   return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel) ? null : path;
 }
 
 // Refuse a secret file or a file inside a secret folder. rel is the path under baseDir; via says how the draft reached the file.
+export const isSecretPath = (rel) => SECRET_FILE.test(basename(rel)) || rel.split(sep).some((part) => SECRET_DIR.has(part));
+
 function assertNotSecret(ref, rel, via) {
-  if (SECRET_FILE.test(basename(rel)) || rel.split(sep).some((part) => SECRET_DIR.has(part))) {
+  if (isSecretPath(rel)) {
     throw new CodeError(`"${ref}" ${via ? 'points to' : 'is'} a file that holds keys or passwords by convention; it is not embedded. Write a sketch instead`);
   }
 }
@@ -133,10 +135,10 @@ export function readEmbeddedCode(html) {
   ]));
 }
 
-// block: { lang, args, text }. code: { baseDir, known } where relative src paths are read and the fallback for moved files.
+// block: { lang, args, text, linked }. code: { baseDir, known } where relative src paths are read and the fallback for moved files.
 // Returns { html, file, warnings } where file names the embedded slice ("path:18-30"), or is null, and warnings are
 // [{ rule, message }] for a long block or a diff hunk that does not add up (the page is still written).
-export function renderCode({ lang, args, text }, { baseDir = process.cwd(), known = new Map(), ui = {}, copy = true } = {}) {
+export function renderCode({ lang, args, text, linked = false }, { baseDir = process.cwd(), known = new Map(), ui = {}, copy = true } = {}) {
   const isDiff = lang === 'diff';
   const opts = parseCodeArgs(args, isDiff);
   if (isDiff && opts.src) throw new CodeError('a diff block takes the diff you paste; src= is not supported for it yet, so paste the diff into the block', 0, DIFF_EXAMPLE);
@@ -160,7 +162,7 @@ export function renderCode({ lang, args, text }, { baseDir = process.cwd(), know
   const slice = body.join('\n');
   if (SECRET_TEXT.test(slice)) throw new CodeError(`${opts.src ? `"${opts.src}"` : 'the block'} looks like it holds a key or a token; it is not embedded. Quote other lines or write a sketch`);
 
-  const copyButton = copy ? `<button class="am-code-copy" type="button" data-am="copy-code" data-done="${esc(ui.done ?? 'Copied ✓')}">${esc(ui.copyCode ?? 'Copy')}</button>` : '';
+  const copyButton = copy ? `<button class="am-code-copy" type="button" data-am="copy-code" data-done="${esc(ui.done ?? 'Copied ✓')}" data-failed="${esc(ui.failed ?? 'Copy failed')}">${esc(ui.copyCode ?? 'Copy')}</button>` : '';
   const long = body.length > LONG_CODE_LINES ? [{ rule: 'code-length', message: `the block has ${body.length} lines; readers skim past long code. Pick the 10 to ${LONG_CODE_LINES} lines that make the point` }] : [];
   if (isDiff) return renderDiff(text, opts, { copyButton, long });
 
@@ -170,7 +172,8 @@ export function renderCode({ lang, args, text }, { baseDir = process.cwd(), know
   if (outside !== undefined) throw new CodeError(`hl=${opts.hl}: line ${outside} is not in the block (lines ${first}-${last})`);
 
   const shownLang = lang || (opts.src ? extname(opts.src).slice(1).toLowerCase() : '');
-  const numbered = Boolean(opts.src || opts.start);
+  // A block that a steps block links always shows its line numbers: the steps name lines by those numbers.
+  const numbered = Boolean(opts.src || opts.start || linked);
   const where = opts.src ? `${opts.src}${range ? `:${range.from === range.to ? range.from : `${range.from}-${range.to}`}` : ''}` : '';
   const title = opts.title ?? where;
   const lines = body.map((l, i) => {

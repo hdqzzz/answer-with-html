@@ -13,14 +13,15 @@ export default {
     theme: 'Theme', modeLabel: 'Mode',
     mode: { auto: 'Auto', light: 'Light', dark: 'Dark' },
     scale: { down: 'Smaller text', up: 'Larger text' },
-    image: {
-      button: 'Copy as image', working: 'Rendering image…', done: 'Copied ✓', failed: 'Copy failed',
+    export: {
+      button: 'Export', copy: 'Copy as image', download: 'Download PNG', pdf: 'Save as PDF',
+      working: 'Rendering…', copied: 'Copied ✓', saved: 'Saved ✓', failed: 'Export failed',
       unavailableBrowser: 'This browser cannot export the page as an image.',
       unavailableClipboard: 'This browser cannot write the image to the clipboard.',
       unavailablePolicy: 'This preview does not allow copying.',
       unverifiedEffect: 'Export may not work correctly in this browser.',
     },
-    copy: 'Copy source', done: 'Copied ✓', copyCode: 'Copy',
+    copy: 'Copy source', done: 'Copied ✓', failed: 'Copy failed', copyCode: 'Copy',
     update: { button: 'New version {version}', current: 'You have {current}. Found when this page was made.', whatsNew: "What's new:", run: 'Run in a terminal:', agent: 'Or tell your agent:', agentText: 'Update answer-me-with-html', notes: "See what's new" },
     live: { updated: 'Page updated', reload: 'Reload' },
     reply: {
@@ -40,6 +41,7 @@ export default {
     chart: { name: 'Chart', data: 'Data', value: 'Value', share: 'Share' },
     api: { path: 'Path parameters', query: 'Query parameters', headers: 'Headers', request: 'Request', response: 'Response', field: 'Field', type: 'Type', description: 'Description', requirement: 'Requirement', required: 'Required', optional: 'Optional' },
     table: { filter: 'Filter table' },
+    steps: { prev: '← Previous', next: 'Next →', count: 'Step {n} of {m}: {item}', hint: 'Click an item or a line number; ← → to move, Esc to clear', hintExplain: 'Click an item or a step; ← → to move, Esc to clear', bar: 'Step controls', idle: '{m} steps', node: 'Step {n}: {item}', list: 'Steps', line: 'Line {n}', lines: 'Lines {from}-{to}' },
   },
   // Player labels. drawn..duration are the title block cells; sheet is the scene header, with {n} and {total} the zero-padded numbers.
   videoUi: {

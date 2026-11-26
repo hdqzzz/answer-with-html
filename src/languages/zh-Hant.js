@@ -20,14 +20,15 @@ export default {
     theme: '主題', modeLabel: '明暗',
     mode: { auto: '跟隨系統', light: '淺色', dark: '深色' },
     scale: { down: '縮小文字', up: '放大文字' },
-    image: {
-      button: '複製為圖片', working: '正在產生圖片…', done: '已複製 ✓', failed: '複製失敗',
+    export: {
+      button: '匯出', copy: '複製為圖片', download: '下載 PNG', pdf: '儲存為 PDF',
+      working: '正在產生…', copied: '已複製 ✓', saved: '已儲存 ✓', failed: '匯出失敗',
       unavailableBrowser: '目前瀏覽器不支援匯出圖片。',
       unavailableClipboard: '目前瀏覽器不支援寫入剪貼簿。',
       unavailablePolicy: '目前預覽視窗未開啟剪貼簿權限，不支援複製。',
       unverifiedEffect: '目前瀏覽器匯出效果可能不保證。',
     },
-    copy: '複製源稿', done: '已複製 ✓', copyCode: '複製',
+    copy: '複製源稿', done: '已複製 ✓', failed: '複製失敗', copyCode: '複製',
     update: { button: '新版本 {version}', current: '目前 {current}。產生此頁時偵測到新版本。', whatsNew: '這次更新：', run: '在終端機執行：', agent: '或者告訴 Agent：', agentText: '更新 answer-me-with-html', notes: '查看更新內容' },
     live: { updated: '頁面已更新', reload: '重新整理' },
     reply: {
@@ -47,6 +48,7 @@ export default {
     chart: { name: '圖表', data: '資料', value: '數值', share: '占比' },
     api: { path: '路徑參數', query: '查詢參數', headers: '請求標頭', request: '請求', response: '回應', field: '欄位', type: '型別', description: '說明', requirement: '必填性', required: '必填', optional: '選填' },
     table: { filter: '篩選表格' },
+    steps: { prev: '← 上一步', next: '下一步 →', count: '第 {n} 步，共 {m} 步：{item}', hint: '點節點或行號；← → 切換，Esc 取消', hintExplain: '點節點或講解；← → 切換，Esc 取消', bar: '步驟控制', idle: '共 {m} 步', node: '第 {n} 步：{item}', list: '步驟', line: '第 {n} 行', lines: '第 {from}-{to} 行' },
   },
   videoUi: {
     play: '播放', pause: '暫停', chapters: '章節', speed: '速度', export: '匯出',

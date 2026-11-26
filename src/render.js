@@ -10,14 +10,16 @@ import { lintDoc } from './lint/ste.js';
 import { esc } from './svg/text.js';
 import { scaleSvgBoxes } from './svg/shapes.js';
 import { SCALE } from './themes/type-scale.js';
-import { VERSION, RUNTIME_JS, TABLE_JS, DELTA_JS, UPDATE_JS, CLOSE_AFTER_JS } from './assets.js';
+import { VERSION, RUNTIME_JS, TABLE_JS, DELTA_JS, STEPS_JS, UPDATE_JS, CLOSE_AFTER_JS } from './assets.js';
 import { rootTag, rootCarrierAttrs, sourceTag } from './page.js';
 import { resolveLanguage } from './language.js';
 import { inlineImages, remoteImages, ImageError, IMAGE_EXAMPLE } from './images.js';
 import { renderCode, CodeError } from './code.js';
+import { checkRefs } from './refs.js';
 import { isolateLtrRuns } from './bidi.js';
 import { hasMath } from './math.js';
 import { cspMeta } from './csp.js';
+import { renderPanel } from './steps-panel.js';
 
 
 export class RenderError extends Error {
@@ -63,7 +65,9 @@ export function renderDoc(source, overrides = {}, defaults = {}, { themes = BUIL
     throw new LintError(warnings);
   }
 
-  const stats = { panels: doc.panels.length, components: {}, code: [], codeWarnings: [], componentWarnings: [], htmlWarnings: [], mathWarnings: [] };
+  // path:line spans in prose are checked against the folder code blocks read from, when the caller names one (am render, am patch).
+  const refWarnings = codeDir ? checkRefs([...doc.intro, ...doc.panels.flatMap((p) => p.blocks)], { baseDir: codeDir }) : [];
+  const stats = { panels: doc.panels.length, components: {}, code: [], codeWarnings: [], refWarnings, componentWarnings: [], htmlWarnings: [], mathWarnings: [] };
   const ui = language.ui;
   const ctx = { seq: 0, stats, errors, ui, dir: language.dir, scale, images: { baseDir, known: knownImages }, code: { baseDir: codeDir, known: knownCode } };
   // A panel-only component in the intro is an error of its own, and the block renders nothing.
@@ -72,7 +76,8 @@ export function renderDoc(source, overrides = {}, defaults = {}, { themes = BUIL
     errors.push(new RenderError(`${b.lang} belongs in a panel: put it under the ## heading of the panel the answer changes`, { line: b.line, component: b.lang, example: COMPONENTS.get(b.lang).example }));
   }
   const introHtml = renderBlocks(doc.intro.filter((b) => !loose.includes(b)), ctx);
-  const panels = doc.panels.map((p) => ({ ...p, html: renderBlocks(p.blocks, ctx) }));
+  const host = { renderBlocks, renderBlock, RenderError };
+  const panels = doc.panels.map((p) => ({ ...p, html: renderPanel(p.blocks, ctx, host) }));
   raiseAll(errors);
   const page = TEMPLATES[doc.meta.template]({ meta: doc.meta, introHtml, panels, ui, language });
   // A right-to-left page isolates each run of text with no right-to-left letter as left to right (src/bidi.js).
@@ -183,13 +188,13 @@ function renderFence(block, ctx) {
   }
   const comp = COMPONENTS.get(lang);
   if (!comp) return codeBlock(block, ctx);
-  if (comp.pageOnly && ctx.video) throw new RenderError(`${lang} works on a page only; a video cannot take answers`, { line, component: lang, example: comp.example });
+  if (comp.pageOnly && ctx.video) throw new RenderError(`${lang} works on a page only; ${comp.pageOnlyReason ?? 'a video cannot show it'}`, { line, component: lang, example: comp.example });
   ctx.stats.components[lang] = (ctx.stats.components[lang] ?? 0) + 1;
   try {
     const warn = ({ line: at = 0, message }) => ctx.stats.componentWarnings?.push({ line: line + at, component: lang, message });
     const html = comp.render(text, {
       args, uid: () => `am${++ctx.seq}`, ui: ctx.ui, dir: ctx.dir ?? 'ltr', video: ctx.video, warn, line,
-      render: (blocks) => renderBlocks(blocks, ctx),
+      render: (blocks) => renderBlocks(blocks, ctx), link: block.link,
     });
     // A component's own svg is measured in viewBox units at fixed text sizes, so the whole box takes the factor. Raw svg / html blocks
     // bypass this function, and a video never scales. A component that renders nested blocks scales each one itself, so its output
@@ -272,6 +277,26 @@ ${row(t.agentText, false)}
   };
 }
 
+// The Export button and its menu (Copy as image, Download PNG, Save as PDF). Like the new-version notice, the menu is a native popover,
+// so it opens and closes on a click, on Esc and on a click outside with no script; src/runtime/export-menu.js shows the button, fills
+// the reasons an item cannot run, moves focus with the arrow keys and does the work. The button starts hidden because the menu's items
+// need that script. The reason an item is unavailable is the muted second line of the item, never part of the toolbar button.
+function exportMenu(ui) {
+  const t = ui.export;
+  const item = (kind, label) => `<button class="am-export-item" type="button" role="menuitem" data-export="${kind}" aria-describedby="am-export-${kind}-note"><span>${esc(label)}</span><small class="am-export-note" id="am-export-${kind}-note" aria-hidden="true"></small></button>`;
+  const labels = [['working', t.working], ['copied', t.copied], ['saved', t.saved], ['failed', t.failed], ['unavailable-browser', t.unavailableBrowser], ['unavailable-clipboard', t.unavailableClipboard], ['unavailable-policy', t.unavailablePolicy], ['unverified-effect', t.unverifiedEffect]]
+    .map(([key, text]) => `data-${key}="${esc(text)}"`).join(' ');
+  return {
+    button: `<button class="am-btn am-btn--export" type="button" data-am="export" popovertarget="am-export" aria-haspopup="menu" aria-expanded="false" aria-controls="am-export" hidden>${esc(t.button)}</button>`,
+    menu: `<div class="am-export" id="am-export" popover role="menu" aria-label="${esc(t.button)}" ${labels}>
+${item('copy', t.copy)}
+${item('download', t.download)}
+${item('pdf', t.pdf)}
+</div>
+`,
+  };
+}
+
 // The page without its new-version button and popover, for a reader on another device (src/serve.js): the notice is for the person
 // who made the page. Both come before the body, so the first match is the one updateNotice wrote.
 export function withoutUpdateNotice(html) {
@@ -282,6 +307,9 @@ export function withoutUpdateNotice(html) {
 
 // A diagram with change markers carries a count row; only then the page needs the delta styles and script.
 export const hasDelta = (html) => html.includes('class="am-delta-bar"');
+
+// A steps block (src/steps-panel.js) needs its own styles and script: the bar, the boxes and the clicks.
+export const hasSteps = (html) => html.includes('class="am-steps"');
 
 // A chart (src/components/chart.js) needs its own styles, as a formula needs the math ones.
 export const hasChart = (html) => html.includes('class="am-diagram am-chart"');
@@ -321,12 +349,13 @@ function scaleButtons(ui) {
 function shell({ meta, language, body, source, embedded, update, closeAfter, colophon, scale }) {
   const { ui, labelKey } = language;
   const notice = updateNotice(ui, update, labelKey);
+  const exporter = exportMenu(ui);
   const pick = (name, label, values, current) => `<label class="am-pick">${esc(label)}<select data-am="${name}">${values
     .map(([value, text]) => `<option value="${esc(value)}"${value === current ? ' selected' : ''}>${esc(text)}</option>`).join('')}</select></label>`;
   const root = { lang: language.htmlLang, dir: language.dir, theme: meta.theme, mode: meta.mode, style: meta.style, scale };
   // The one inline script, as the browser reads it: the policy pins a hash of exactly this text.
   const interactiveTable = body.includes('<table data-am-table=');
-  const script = `\n${RUNTIME_JS}${interactiveTable ? TABLE_JS : ''}${hasDelta(body) ? DELTA_JS : ''}${update ? UPDATE_JS : ''}${closeAfter ? CLOSE_AFTER_JS : ''}`;
+  const script = `\n${RUNTIME_JS}${interactiveTable ? TABLE_JS : ''}${hasDelta(body) ? DELTA_JS : ''}${hasSteps(body) ? STEPS_JS : ''}${update ? UPDATE_JS : ''}${closeAfter ? CLOSE_AFTER_JS : ''}`;
   return `<!doctype html>
 ${rootTag(root)}
 <head>
@@ -336,7 +365,7 @@ ${cspMeta([script], { live: true })}
 <meta name="generator" content="Answer me with HTML ${VERSION}">
 <title>${esc(meta.title || 'Answer me with HTML')}</title>
 <style>
-${pageCss(embedded, { diff: body.includes('class="am-codeblock am-codeblock--diff"'), delta: hasDelta(body), rtl: language.dir === 'rtl', math: hasMath(body), chart: hasChart(body), table: interactiveTable, update: Boolean(update), closeAfter, scale })}
+${pageCss(embedded, { diff: body.includes('class="am-codeblock am-codeblock--diff"'), delta: hasDelta(body), rtl: language.dir === 'rtl', math: hasMath(body), chart: hasChart(body), steps: hasSteps(body), table: interactiveTable, update: Boolean(update), closeAfter, scale })}
 </style>
 </head>
 <body>
@@ -346,10 +375,10 @@ ${pick('mode', ui.modeLabel, Object.entries(ui.mode), meta.mode)}
 ${scaleButtons(ui)}
 <button class="am-btn am-btn--reply" type="button" data-am="reply" data-ui="${esc(JSON.stringify({ ...ui.reply, done: ui.done, remarks: ui.remark.section, kinds: ui.remark.kinds, ...(closeAfter ? { closeAfter: { seconds: CLOSE_AFTER_SECONDS, ...ui.closeAfter } } : {}) }))}">${esc(ui.reply.button)}</button>
 <button class="am-btn am-btn--remark" type="button" data-am="remark" data-ui="${esc(JSON.stringify(ui.remark))}">${esc(ui.remark.button)}</button>
-<button class="am-btn" type="button" data-am="copy" data-done="${esc(ui.done)}">${esc(ui.copy)}</button>
-<button class="am-btn am-btn--copy-image" type="button" data-am="copy-image" data-working="${esc(ui.image.working)}" data-done="${esc(ui.image.done)}" data-failed="${esc(ui.image.failed)}" data-unavailable-browser="${esc(ui.image.unavailableBrowser)}" data-unavailable-clipboard="${esc(ui.image.unavailableClipboard)}" data-unavailable-policy="${esc(ui.image.unavailablePolicy)}" data-unverified-effect="${esc(ui.image.unverifiedEffect)}" aria-label="${esc(ui.image.button)}" title="${esc(ui.image.button)}" hidden>${esc(ui.image.button)}</button>
+<button class="am-btn" type="button" data-am="copy" data-done="${esc(ui.done)}" data-failed="${esc(ui.failed)}">${esc(ui.copy)}</button>
+${exporter.button}
 </div>
-${notice.popover}${colophon ? withColophon(body, language) : body}
+${notice.popover}${exporter.menu}${colophon ? withColophon(body, language) : body}
 ${lightboxShell(ui, body.includes('class="am-diagram'))}${sourceTag(source)}
 <script>${script}</script>
 </body>

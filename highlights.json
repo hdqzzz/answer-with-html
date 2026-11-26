@@ -1,33 +1,33 @@
 {
-  "version": "0.6.1",
+  "version": "0.6.4",
   "en": [
-    "New diagrams: state machines, UML classes and HTTP/RPC contracts",
-    "Copy as image puts the page on the clipboard; pages_dir picks the folder",
-    "am video --voice cmd narrates with edge-tts, piper or another CLI TTS"
+    "steps without code: one explanation per step beside the diagram",
+    "Click an item or its explanation and both light up; arrows move",
+    "A stacked steps diagram is centred again on narrow screens"
   ],
   "zh": [
-    "新增图表：状态机、UML 类图和 HTTP/RPC 接口契约",
-    "「复制为图片」把整页放进剪贴板；pages_dir 指定页面输出目录",
-    "am video --voice cmd 用 edge-tts、piper 等命令行 TTS 配音"
+    "steps 不写代码也行：图旁边每一步一句讲解",
+    "点节点或讲解，两边一起高亮；方向键逐步切换",
+    "窄屏上下排时，steps 里的图重新居中"
   ],
   "zh-Hant": [
-    "新增圖表：狀態機、UML 類別圖和 HTTP/RPC 介面契約",
-    "「複製為圖片」把整頁放進剪貼簿；pages_dir 指定頁面輸出資料夾",
-    "am video --voice cmd 用 edge-tts、piper 等命令列 TTS 配音"
+    "steps 不寫程式碼也行：圖旁邊每一步一句講解",
+    "點節點或講解，兩邊一起高亮；方向鍵逐步切換",
+    "窄螢幕上下排時，steps 裡的圖重新置中"
   ],
   "ja": [
-    "新しい図：状態遷移図、UML クラス図、HTTP/RPC の API 仕様",
-    "「画像としてコピー」でページをクリップボードへ。出力先は pages_dir",
-    "am video --voice cmd で edge-tts や piper などのコマンド TTS が使えます"
+    "steps はコードなしでも使える：図の横に各ステップの説明",
+    "項目か説明をクリックすると両方が強調され、矢印キーで移動",
+    "狭い画面で縦に並ぶとき、steps の図が中央に戻ります"
   ],
   "he": [
-    "דיאגרמות חדשות: מכונות מצבים, מחלקות UML וחוזי HTTP/RPC",
-    "העתקה כתמונה שמה את העמוד בלוח; pages_dir קובע את התיקייה",
-    "am video --voice cmd מקריא עם edge-tts, piper או TTS אחר משורת הפקודה"
+    "steps גם בלי קוד: הסבר לכל שלב לצד התרשים",
+    "לחיצה על פריט או על ההסבר שלו מדגישה את שניהם; החיצים מעבירים שלב",
+    "במסך צר, התרשים של steps שוב ממורכז"
   ],
   "tr": [
-    "Yeni diyagramlar: durum makineleri, UML sınıfları, HTTP/RPC sözleşmeleri",
-    "Görsel olarak kopyala sayfayı panoya alır; klasörü pages_dir seçer",
-    "am video --voice cmd; edge-tts, piper gibi komut satırı TTS ile seslendirir"
+    "Kodsuz steps: diyagramın yanında her adım için bir açıklama",
+    "Bir öğeye ya da açıklamasına tıklayın, ikisi de vurgulanır; oklar ilerletir",
+    "Dar ekranda alt alta dizilen steps diyagramı yeniden ortalanır"
   ]
 }

@@ -118,7 +118,7 @@ Full syntax: `am help class`, `am help er`, `am help api`.
 
 Every page has a **Reply** button. The reader comments on any panel (the speech-bubble button in its title bar) and copies one Markdown reply back to the agent. Answers and comments survive a reload. Once the reader answers, comments or remarks, a bar at the bottom of the page shows the counts and copies the reply in one click; the Reply sheet shows the reply drawn, with the copied Markdown under a fold.
 
-The toolbar also has a **Copy as image** button. It draws the whole page into a PNG and copies it to the clipboard. It appears only in Chromium, including Chromium embedded in an app (Electron, WebView2); Firefox and Safari cannot rasterize the page reliably, and there the button stays hidden. Where the page cannot write images to the clipboard (outside a secure context such as a local file, `localhost` or HTTPS, in a WebView without the Clipboard API, or when the clipboard refuses the image), the page downloads the PNG instead. From a terminal, `am export --png` does the same job.
+The toolbar also has an **Export** button that opens a small menu. **Copy as image** draws the whole page into a PNG and puts it on the clipboard; **Download PNG** saves the same PNG, named after the page title; **Save as PDF** opens the browser's print dialog (the toolbar and the menu do not print). Chromium (including Chromium embedded in an app: Electron, WebView2) and Firefox can draw the page; in Safari and other browsers the two image items stay available but say the result is not guaranteed. An item that cannot work says why on its own line in the menu: Copy as image needs a secure context (a local file, `localhost` or HTTPS), the Clipboard API and a preview that allows clipboard writes, while Download PNG and Save as PDF do not need the clipboard. A refused copy reports a failure and does not download anything. From a terminal, `am export --png` and `am export --pdf` do the same jobs.
 
 The **Remark** button turns on block marking. While it is on, the reader clicks a paragraph, list item, quote, code block, table or $$ formula block, picks a kind (suggestion, keep, question or concern) and may add a note. The mark shows on the block, survives a reload, and comes back in the reply under Remarks with the start of the block quoted. A page title or panel title takes no mark; use the panel comment for it.
 
@@ -136,7 +136,7 @@ Which cache do we use?
 
 - The first line is the question. Each option starts with `*` (the suggestion, shown with a tag; every option starts unselected) or `-`. Write 2 to 6 options.
 - One choice needs exactly one `*`. `ask multi` lets the reader pick several; `*` marks the options you suggest; they start unselected too.
-- An option may carry one preview: indent a `:::` block under it. The block takes any component, plus `html` and `svg`; add it only when a picture helps. `ask cards` lays the options out in a grid, so each preview becomes a card canvas.
+- An option may carry one preview: indent a `:::` block under it. The block takes any component except `steps`, plus `html` and `svg`; add it only when a picture helps. `ask cards` lays the options out in a grid, so each preview becomes a card canvas.
 - The reply says for each decision whether the reader changed it, confirmed the suggestion, or did not answer it. Comment text and remark notes come back quoted with `>`.
 
 Full syntax: `am help ask`.
@@ -155,6 +155,7 @@ Quote code that exists in the project instead of typing it:
 - `hl=22` or `hl=20-22,25` highlights lines. For code you type, `title="limits.ts · sketch"` names it and `start=38` numbers it from line 38.
 - A block longer than 40 lines gets a warning; more than 200 lines is an error. Files that hold keys by convention (`.env`, `*.pem`, `id_rsa`, `.ssh/`, `.git/` …) and files with anything that looks like a key or a token are refused. The rules follow html-plan's.
 - The render lists every file it embedded. The page keeps the path; `am patch` reads the file again, or keeps the page's copy when the file has moved.
+- An inline code span in the text that is only a path and a line, such as `` `src/cli.js:42` `` or `` `src/cli.js:18-30` ``, cites the file. This holds in the text, tables, callouts, `tree` labels and notes, `timeline` titles and notes, `kv` values and `ask` questions and options; diagram text (`flow`, `sequence`, `state` …) shows backticks as they are and is not checked. The render checks it against the same folder and prints a `refs` warning with the draft line (`L12 [ref] ...`) when the file is missing, the lines go past its end, or the range runs backwards. A page with these warnings does not open, the same as with code warnings. A missing path is a warning only when its first folder exists in the current folder (`src/clii.js:4` when `src/` exists); a path of another project (`other-repo/x.py:3`), a file outside the current folder, a secret file, `localhost:3000`, URLs, absolute paths and spans in code blocks are not checked.
 
 To show a change, paste a unified diff in a `diff` fence and the CLI draws it:
 
@@ -173,7 +174,57 @@ To show a change, paste a unified diff in a `diff` fence and the CLI draws it:
 - `hl=` uses new-side numbers. `diff --git`, `---`, `+++` and `\ No newline at end of file` lines are accepted and not drawn.
 - A line that does not start with `+`, `-`, a space or `@@` is an error, and so is a cut (`...`): split the diff into two hunks. A hunk whose counts do not match its `@@` header is a warning. `src=` is not supported with `diff`: paste the diff. The limits are the same as for other code blocks.
 
-Full syntax: `am help code`.
+To link a diagram and a code block, put both in one panel with a `steps` block:
+
+````markdown
+```js start=1
+const request = receive(input);
+const user = authenticate(request);
+const result = await service.run(user);
+respond(result);
+```
+
+```flow LR
+Gateway -> Auth -> Service
+```
+
+```steps
+Gateway 1: The request comes in.
+Auth 2: The user is checked.
+Service 3-4: The service runs, then the answer goes back.
+```
+````
+
+- Each step is `<item> <line or range>: <note>`. The item is the text of a `flow` node, a `state` or a `tree` entry, written as the diagram writes it. The lines are the last number or range before the first colon. The first colon ends the item, so an item cannot contain a colon: to link a `tree` entry such as `Part 1: Writing rules`, rename the entry in the diagram so it has no colon.
+- Line numbers are the ones the code block shows: the file's own with `src=` and `lines=`, else from `start=`, else from 1. A linked code block always shows its numbers.
+- On the page, a click on an item (or Enter or Space on it) boxes its lines, shows the note above them and marks the item and its edges. A click on a line number picks the step that covers it; a click on the code text does nothing. The bar above the pair has Previous and Next, says "Step 2 of 3" and shows a short hint; the note above the boxed lines starts with the step number and item. The arrow keys move and Esc clears.
+- The pair sits side by side from about 720px of block width, in the order you wrote the two blocks, and stacks below it, the diagram first. Long lines wrap, so the code never scrolls sideways.
+- In print, a PNG or PDF, and with no script, there is no bar and no box. Every step is numbered on its item and beside its first line, and a numbered list of the steps follows the pair.
+- Leave the diagram out and the block is a walkthrough of the code: the items are names for the steps.
+- A panel with a diagram and no code block is in explain mode, below.
+- `am render` reports, with the draft line: an item that is not in the diagram or that matches more than one, the same item in two steps, an item that ends with `-` or that holds a colon in the diagram, a range outside the code or two ranges that overlap, a panel with neither a code block nor a diagram or with more than one code block or diagram, a second `steps` block, a `steps` block inside an `ask` option, a `diff` block, and a diagram type that is not linked yet (v1 links `flow`, `state` and `tree`).
+
+To walk a reader through a diagram with no code, leave the code block out and write each step as `<item>: <explanation>`:
+
+````markdown
+```flow LR
+Order -> Pay -> Ship
+```
+
+```steps
+Order: The customer places the order.
+Pay: The payment is taken.
+Ship: The warehouse sends the parcel.
+```
+````
+
+- The item is everything before the first colon, written as the diagram writes it, with no line numbers: an item may end in a number (`Step 2: ...`). The explanation is inline Markdown and may be empty.
+- The pair is the diagram and a numbered list of the steps, each with a bold `n. item` lead and its explanation, in the order you wrote the diagram and the `steps` block. It sits side by side from about 720px of block width and stacks below it, the diagram first.
+- On the page the list stays visible. A click on a diagram item or a list entry (or Enter or Space on either) lights the item and its edges and marks the entry as current; Previous, Next and the arrow keys move, Esc clears. There is no note bar, because the list carries the explanation.
+- In print, a PNG or PDF, and with no script, every step is numbered on its item and the numbered list sits beside or under the diagram. There is no bar.
+- Errors are the diagram errors above. A step written with lines (`Item 3-4: ...`) is read as the item `Item 3-4`, so it reports that it is not an item of the diagram and says that a step has no line numbers. A panel with neither a code block nor a diagram is an error.
+
+Full syntax: `am help code`, `am help steps`.
 
 ## Images
 
@@ -274,7 +325,7 @@ AM_EOF
 
 After you render the page again, an automatic ID can name a different panel, and a patch by that letter changes the wrong panel with no warning: the tool cannot tell it from a rename. Before you patch by letter, give the panels explicit letters in the draft.
 
-Pages go to `~/.answer-me-with-html/pages/` by default. Set `AM_HOME` to move them. When the session may not write there (a host sandbox that allows writes only in the workspace), `am render` and `am video` without `-o` save the page in a private folder in the system temporary folder instead (`answer-me-with-html-<uid>/pages/`; mode 0700, and a folder that is not private to your user is refused) and say so; the system may clear it. `am clean` and `--replace` cover that folder, `am serve` does not. `am patch` never moves a page. A page or video without `-o` is named the same way as a saved draft (below): `<name>-<time>.html`, so a draft whose title is all Chinese gets a readable name from `file: tcp-handshake`. `-o` names a file, not a folder; use a name such as `page.html`. An explicit name without an extension is still a file, and the CLI prints a notice recommending `.html`. A page with STE or code warnings does not open in the browser (add `--open` to open it anyway). To render the fixed draft again, run `am render … --replace <page>`: the earlier page is deleted once the new one is written, so `pages/` keeps one page per answer. A render lists every draft error at once, in line order, and writes no page. When the draft came from stdin (`am render -`) and has errors or warnings, it is saved as `drafts/<name>-<time>.md` in the data directory, where `<name>` is the draft's `file:` field, or the title when `file:` is missing or has no ASCII letter or digit, reduced to lowercase ASCII letters and digits (runs of other characters become one `-`, at most 24 characters, or `page` when none are left), and the output prints `draft: <path>`; the line numbers match that file, so edit the flagged lines there and run `am render <path>`. A draft in `drafts/` is deleted after a render with no warnings. A draft you give as a file is never copied. The default folder is private to your user (mode 0700), so other users on a shared host cannot read your pages; an existing `AM_HOME` folder keeps its mode.
+Pages go to `~/.answer-me-with-html/pages/` by default. Set `AM_HOME` to move them. When the session may not write there (a host sandbox that allows writes only in the workspace), `am render` and `am video` without `-o` save the page in a private folder in the system temporary folder instead (`answer-me-with-html-<uid>/pages/`; mode 0700, and a folder that is not private to your user is refused) and say so; the system may clear it. `am clean` and `--replace` cover that folder, `am serve` does not. `am patch` never moves a page. A page or video without `-o` is named the same way as a saved draft (below): `<name>-<time>.html`, so a draft whose title is all Chinese gets a readable name from `file: tcp-handshake`. `-o` names a file, not a folder; use a name such as `page.html`. An explicit name without an extension is still a file, and the CLI prints a notice recommending `.html`. A page with STE, code or ref warnings does not open in the browser (add `--open` to open it anyway). To render the fixed draft again, run `am render … --replace <page>`: the earlier page is deleted once the new one is written, so `pages/` keeps one page per answer. A render lists every draft error at once, in line order, and writes no page. When the draft came from stdin (`am render -`) and has errors or warnings, it is saved as `drafts/<name>-<time>.md` in the data directory, where `<name>` is the draft's `file:` field, or the title when `file:` is missing or has no ASCII letter or digit, reduced to lowercase ASCII letters and digits (runs of other characters become one `-`, at most 24 characters, or `page` when none are left), and the output prints `draft: <path>`; the line numbers match that file, so edit the flagged lines there and run `am render <path>`. A draft in `drafts/` is deleted after a render with no warnings. A draft you give as a file is never copied. The default folder is private to your user (mode 0700), so other users on a shared host cannot read your pages; an existing `AM_HOME` folder keeps its mode.
 
 ## Export a page
 

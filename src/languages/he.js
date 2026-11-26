@@ -19,14 +19,15 @@ export default {
     theme: 'ערכת עיצוב', modeLabel: 'מצב',
     mode: { auto: 'אוטומטי', light: 'בהיר', dark: 'כהה' },
     scale: { down: 'הקטנת הטקסט', up: 'הגדלת הטקסט' },
-    image: {
-      button: 'העתקה כתמונה', working: 'יוצר תמונה…', done: 'הועתק ✓', failed: 'ההעתקה נכשלה',
+    export: {
+      button: 'ייצוא', copy: 'העתקה כתמונה', download: 'הורדת PNG', pdf: 'שמירה כ-PDF',
+      working: 'מכין…', copied: 'הועתק ✓', saved: 'נשמר ✓', failed: 'הייצוא נכשל',
       unavailableBrowser: 'הדפדפן הזה אינו יכול לייצא את העמוד כתמונה.',
       unavailableClipboard: 'הדפדפן הזה אינו יכול לכתוב את התמונה ללוח.',
       unavailablePolicy: 'התצוגה המקדימה הזו אינה מאפשרת העתקה.',
       unverifiedEffect: 'ייתכן שהייצוא לא יעבוד כראוי בדפדפן הזה.',
     },
-    copy: 'העתקת המקור', done: 'הועתק ✓', copyCode: 'העתקה',
+    copy: 'העתקת המקור', done: 'הועתק ✓', failed: 'ההעתקה נכשלה', copyCode: 'העתקה',
     update: { button: 'גרסה חדשה {version}', current: 'הגרסה שלכם {current}. הגרסה החדשה נמצאה כשהדף נוצר.', whatsNew: 'מה חדש בגרסה:', run: 'הריצו בטרמינל:', agent: 'או בקשו מה-Agent:', agentText: 'עדכן את answer-me-with-html', notes: 'מה חדש' },
     live: { updated: 'הדף עודכן', reload: 'רענון' },
     reply: {
@@ -46,6 +47,7 @@ export default {
     chart: { name: 'תרשים', data: 'נתונים', value: 'ערך', share: 'חלק' },
     api: { path: 'פרמטרים בנתיב', query: 'פרמטרים בשאילתה', headers: 'כותרות', request: 'בקשה', response: 'תגובה', field: 'שדה', type: 'טיפוס', description: 'תיאור', requirement: 'דרישה', required: 'חובה', optional: 'רשות' },
     table: { filter: 'סינון הטבלה' },
+    steps: { prev: '→ הקודם', next: 'הבא ←', count: 'שלב {n} מתוך {m}: {item}', hint: 'לחצו על פריט או על מספר שורה; ← → למעבר, Esc לביטול', hintExplain: 'לחצו על פריט או על שלב; ← → למעבר, Esc לביטול', bar: 'בקרת שלבים', idle: '{m} שלבים', node: 'שלב {n}: {item}', list: 'שלבים', line: 'שורה {n}', lines: 'שורות {from}-{to}' },
   },
   // Names for the frontmatter keys an agent writes most (`author: …`), shown under the title. Other keys show as written.
   metaKeys: {

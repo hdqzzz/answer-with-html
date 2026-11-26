@@ -1,6 +1,6 @@
 # Answer with HTML
 
-A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), updated through upstream `a675f83` (v0.6.1 plus subsequent changes). The rendering engine and its MIT attribution are preserved.
+A personally maintained edition of [QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html), updated through upstream v0.6.4 (`4ad3973`). The rendering engine and its MIT attribution are preserved.
 
 ## What this edition changes
 
@@ -10,7 +10,7 @@ A personally maintained edition of [QingYunA/answer-me-with-html](https://github
 - Do not add evidence-status labels or review cards by default.
 - Use paper and light mode for everyday output; the upstream `colophon` setting defaults to off, so pages omit the project promotion above the title.
 - Preserve readable heading sizes and wrapping across themes, including API contract headings. Browser inspection of generated reports remains opt-in.
-- Optionally deliver each finished HTML report unchanged to your own DingTalk conversation, using an existing local `dws` login. Convert to PDF only when requested. The account binding and opt-in stay local; duplicate and pending deliveries are tracked.
+- Deliver the HTML in the current chat. When requested, send the original file to your own DingTalk conversation using an existing local `dws` login. Convert to PDF only when requested.
 
 The skill identifier remains `answer-me-with-html` for compatibility. Its entry point is [SKILL.md](skills/answer-me-with-html/SKILL.md); [the writing reference](skills/answer-me-with-html/references/readable-explanations.md) and [a complete Chinese draft](examples/clear-explanation.zh.md) show the approach.
 
@@ -32,14 +32,14 @@ node skills/answer-me-with-html/scripts/am.mjs render examples/clear-explanation
 
 ## Maintain this edition
 
-To enable self-delivery on an already authorized machine:
+The optional DingTalk helper requires a local account binding before use. To set it up on an already authorized machine:
 
 ```sh
 node skills/answer-me-with-html/scripts/dingtalk.mjs config on --format html
 node skills/answer-me-with-html/scripts/dingtalk.mjs config status
 ```
 
-Use `config off` to stop. Add `--format pdf` to a delivery when PDF is specifically requested; conversion needs Node.js 22+ and Chrome/Chromium/Edge. See [DingTalk delivery](skills/answer-me-with-html/references/dingtalk.md) for formats and delivery results. This works through the skill's final-report workflow; plain rendering and installations on other machines send nothing without local opt-in.
+Use `config off` to disable the helper. Add `--format pdf` to a delivery when PDF is specifically requested; conversion needs Node.js 22+ and Chrome/Chromium/Edge. The skill sends only when asked for that report, even when the helper is enabled. See [DingTalk delivery](skills/answer-me-with-html/references/dingtalk.md) for formats and delivery results.
 
 `origin` is this repository; `upstream` is the original project. Review local changes before pulling or merging. Preserve this edition's writing rules, appearance preference and promotion removal when incorporating upstream changes.
 

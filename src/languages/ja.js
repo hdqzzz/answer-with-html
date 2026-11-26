@@ -21,14 +21,15 @@ export default {
     theme: 'テーマ', modeLabel: '表示',
     mode: { auto: '自動', light: 'ライト', dark: 'ダーク' },
     scale: { down: '文字を小さく', up: '文字を大きく' },
-    image: {
-      button: '画像としてコピー', working: '画像を生成中…', done: 'コピーしました ✓', failed: 'コピーできません',
+    export: {
+      button: '書き出し', copy: '画像としてコピー', download: 'PNG をダウンロード', pdf: 'PDF として保存',
+      working: '生成中…', copied: 'コピーしました ✓', saved: '保存しました ✓', failed: '書き出せませんでした',
       unavailableBrowser: 'このブラウザは画像を書き出せません。',
       unavailableClipboard: 'このブラウザはクリップボードに画像を書き込めません。',
       unavailablePolicy: 'このプレビューではクリップボード権限がないためコピーできません。',
       unverifiedEffect: 'このブラウザでは書き出し結果が保証されません。',
     },
-    copy: '原稿をコピー', done: 'コピーしました ✓', copyCode: 'コピー',
+    copy: '原稿をコピー', done: 'コピーしました ✓', failed: 'コピーできません', copyCode: 'コピー',
     update: { button: '新バージョン {version}', current: '現在は {current}。このページの作成時に見つかりました。', whatsNew: '今回の更新：', run: 'ターミナルで実行：', agent: 'または Agent に伝える：', agentText: 'answer-me-with-html を更新して', notes: '更新内容を見る' },
     live: { updated: 'ページが更新されました', reload: '再読み込み' },
     reply: {
@@ -48,6 +49,7 @@ export default {
     chart: { name: 'グラフ', data: 'データ', value: '値', share: '割合' },
     api: { path: 'パスパラメーター', query: 'クエリパラメーター', headers: 'ヘッダー', request: 'リクエスト', response: 'レスポンス', field: 'フィールド', type: '型', description: '説明', requirement: '必須・任意', required: '必須', optional: '任意' },
     table: { filter: '表を絞り込む' },
+    steps: { prev: '← 前へ', next: '次へ →', count: 'ステップ {n} / {m}：{item}', hint: '項目か行番号をクリック。← → で移動、Esc で解除', hintExplain: '項目か解説をクリック。← → で移動、Esc で解除', bar: 'ステップの操作', idle: '全 {m} ステップ', node: 'ステップ {n}：{item}', list: 'ステップ', line: '{n} 行目', lines: '{from}-{to} 行目' },
   },
   videoUi: {
     play: '再生', pause: '一時停止', chapters: '章', speed: '速度', export: '書き出し',

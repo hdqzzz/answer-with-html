@@ -14,7 +14,7 @@ export default {
     theme: 'Tema', modeLabel: 'Mod',
     mode: { auto: 'Otomatik', light: 'Açık', dark: 'Koyu' },
     scale: { down: 'Daha küçük yazı', up: 'Daha büyük yazı' },
-    copy: 'Kaynağı kopyala', done: 'Kopyalandı ✓', copyCode: 'Kopyala',
+    copy: 'Kaynağı kopyala', done: 'Kopyalandı ✓', failed: 'Kopyalanamadı', copyCode: 'Kopyala',
     update: { button: 'Yeni sürüm {version}', current: 'Sizdeki sürüm {current}. Yeni sürüm bu sayfa oluşturulurken bulundu.', whatsNew: 'Yenilikler:', run: 'Terminalde çalıştırın:', agent: 'Ya da Agent’a söyleyin:', agentText: 'answer-me-with-html’i güncelle', notes: 'Yenilikleri gör' },
     live: { updated: 'Sayfa güncellendi', reload: 'Yeniden yükle' },
     reply: {
@@ -34,8 +34,10 @@ export default {
     chart: { name: 'Grafik', data: 'Veri', value: 'Değer', share: 'Pay' },
     api: { path: 'Yol parametreleri', query: 'Sorgu parametreleri', headers: 'Başlıklar', request: 'İstek', response: 'Yanıt', field: 'Alan', type: 'Tür', description: 'Açıklama', requirement: 'Gereklilik', required: 'Zorunlu', optional: 'İsteğe bağlı' },
     table: { filter: 'Tabloyu filtrele' },
-    image: {
-      button: 'Görsel olarak kopyala', working: 'Görsel oluşturuluyor…', done: 'Kopyalandı ✓', failed: 'Kopyalanamadı',
+    steps: { prev: '← Önceki', next: 'Sonraki →', count: 'Adım {n} / {m}: {item}', hint: 'Bir öğeye veya satır numarasına tıklayın; ← → ile gezin, Esc ile temizleyin', hintExplain: 'Bir öğeye veya adıma tıklayın; ← → ile gezin, Esc ile temizleyin', bar: 'Adım denetimleri', idle: '{m} adım', node: 'Adım {n}: {item}', list: 'Adımlar', line: 'Satır {n}', lines: 'Satır {from}-{to}' },
+    export: {
+      button: 'Dışa aktar', copy: 'Görsel olarak kopyala', download: 'PNG indir', pdf: 'PDF olarak kaydet',
+      working: 'Hazırlanıyor…', copied: 'Kopyalandı ✓', saved: 'Kaydedildi ✓', failed: 'Dışa aktarılamadı',
       unavailableBrowser: 'Bu tarayıcı sayfayı görsel olarak dışa aktaramaz.',
       unavailableClipboard: 'Bu tarayıcı görseli panoya yazamaz.',
       unavailablePolicy: 'Bu önizleme kopyalamaya izin vermiyor.',

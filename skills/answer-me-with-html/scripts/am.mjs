@@ -30,11 +30,11 @@ var init_temml = __esm({
 
 // src/cli.js
 import { parseArgs } from "node:util";
-import { readFileSync as readFileSync10, writeFileSync as writeFileSync8, mkdirSync as mkdirSync6, existsSync as existsSync8, rmSync as rmSync7, statSync as statSync6, chmodSync as chmodSync2, openSync as openSync2, closeSync as closeSync2 } from "node:fs";
+import { readFileSync as readFileSync11, writeFileSync as writeFileSync8, mkdirSync as mkdirSync6, existsSync as existsSync8, rmSync as rmSync7, statSync as statSync7, chmodSync as chmodSync2, openSync as openSync2, closeSync as closeSync2 } from "node:fs";
 
 // src/assets.js
-var VERSION = "0.6.1";
-var BASE_CSS = `/* Answer me with HTML base \u2014 uses theme variables only, never hard-coded colors (theme tokens and decorations: themes/<name>.js). Exception: the var() fallbacks of diagrams (flow / sequence) equal the blueprint light tokens, guarded by a test. */
+var VERSION = "0.6.4";
+var BASE_CSS = `/* Answer me with HTML base \u2014 uses theme variables only, never hard-coded colors (theme tokens and decorations: themes/{name}.js). Exception: the var() fallbacks of diagrams (flow / sequence) equal the blueprint light tokens, guarded by a test. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -73,6 +73,11 @@ code, pre, kbd { font-family: var(--font-mono); }
 
 /* \u2500\u2500 Header \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .am-head { margin: 0 0 20px; padding-inline-end: 300px; }
+/* The toolbar is fixed over the top corner, wider than the 300px reserved here. With the page script (src/runtime/page.js) the header drops that
+   reservation and floats a spacer of the toolbar's measured size instead: only the lines beside the toolbar get shorter, so the colophon never
+   runs under it and a title below it keeps the whole width. Without the script the fixed reservation stays. */
+.am-bar-fit .am-head { padding-inline-end: 0; }
+.am-bar-fit .am-head::before { content: ""; float: inline-end; width: var(--am-bar-w, 0px); height: var(--am-bar-h, 0px); }
 .am-head h1 { margin: 0; font-size: var(--am-fs-title); line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .am-sub { margin: 4px 0 0; color: var(--ink-2); }
 .am-head-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: var(--am-fs-small); color: var(--ink-2); }
@@ -392,6 +397,9 @@ body.am-has-reply-bar { padding-block-end: 72px; }
   border: var(--node-width, var(--bw)) solid var(--node-stroke, var(--line)); background: var(--node-fill, var(--paper)); padding: 6px 14px; text-align: center;
   border-radius: var(--node-radius, var(--radius)); font-weight: 600; color: var(--node-text, inherit); filter: var(--node-shadow, none);
 }
+/* A word longer than its column (an IP, an email, a hash) breaks instead of running over the next column. anywhere, not break-word,
+   so the column's min-content width shrinks too; the wbr breaks that tree.js adds still give the preferred break points. */
+.am-tree-box, .am-tree-list li { overflow-wrap: anywhere; }
 .am-tree-box small { display: block; font-weight: 400; color: var(--ink-2); font-size: var(--am-fs-small); }
 /* The root box and a highlighted box are emphasis: they take the highlight tokens. With none set the root box keeps its accent tint and a highlighted box looks like any other. */
 .am-tree-box--root, .am-tree-box--hi { border-color: var(--hi-stroke, var(--node-stroke, var(--line))); color: var(--hi-text, var(--node-text, inherit)); }
@@ -632,6 +640,7 @@ body.am-has-reply-bar { padding-block-end: 72px; }
   .am-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .am-grid > .am-panel { grid-column: auto !important; }
   .am-grid > .am-panel.am-span-wide { grid-column: 1 / -1 !important; }
+  .am-grid.am-grid--single { grid-template-columns: minmax(0, 1fr); } /* cols: 1 stays one column */
 }
 @media (max-width: 760px) {
   .am-sheet, .am-doc { padding: 56px 12px 24px; }
@@ -642,6 +651,7 @@ body.am-has-reply-bar { padding-block-end: 72px; }
   .am-toolbar > * { flex: none; }
   .am-toolbar .am-btn:focus-visible, .am-toolbar .am-pick:focus-within { outline-offset: -2px; }
   .am-head { padding-inline-end: 0; }
+  .am-bar-fit .am-head::before { display: none; }
   .am-grid { grid-template-columns: minmax(0, 1fr); }
   .am-grid > .am-panel.am-span-wide { grid-column: auto !important; }
   /* The rail hugs the viewport edge inside a strip of its own, so it never covers text and never pushes the body down. */
@@ -658,14 +668,36 @@ body.am-has-reply-bar { padding-block-end: 72px; }
   .am-lightbox-header { top: 8px; left: 12px; right: 12px; }
   .am-lightbox-stage { top: 46px; bottom: 12px; left: 12px; right: 12px; border-radius: max(var(--radius), 10px); }
 }
-/* Read by screen readers, not drawn (the Copy as image status, src/runtime/copy-image.js). */
+/* \u2500\u2500 Export menu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   A native popover (src/render.js exportMenu): the top layer keeps it clear of the toolbar's sideways scroll box on a phone. It stays
+   hidden unless open; a browser without popovers gets the .is-open class from src/runtime/export-menu.js instead, and the runtime sets
+   top and left so the menu sits under the button. */
+.am-export { display: none; }
+.am-export:is(:popover-open, .is-open) {
+  display: flex; flex-direction: column; position: fixed; inset: 52px auto auto auto; margin: 0; z-index: 11;
+  width: max-content; min-width: 200px; max-width: calc(100vw - 16px); padding: 4px; overflow-y: auto;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--line-2); border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.am-export-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 10px; text-align: start;
+  font: var(--am-fs-text)/1.3 var(--font-sans); color: var(--ink); background: transparent; border: 0; border-radius: var(--radius); cursor: pointer;
+}
+.am-export-item:hover, .am-export-item:focus-visible { background: var(--fill); }
+.am-export-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.am-export-item[aria-disabled="true"] { cursor: default; }
+.am-export-item[aria-disabled="true"] > span { color: var(--ink-3); }
+.am-export-item[aria-disabled="true"]:hover { background: transparent; }
+.am-export-note { font-size: var(--am-fs-small); color: var(--ink-2); white-space: normal; }
+.am-export-note:empty { display: none; }
+/* Read by screen readers, not drawn (the Export status, src/runtime/export-menu.js). */
 .am-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .am-colophon { margin: 0 0 8px; font: var(--am-fs-label) var(--font-mono); color: var(--ink-3); }
 .am-colophon a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 @media print {
   .am-toolbar, .am-diagram-expand, .am-lightbox, .am-code-copy, .am-toc, .am-comment-btn, .am-comment, .am-reply, .am-reply-bar { display: none !important; }
-  .am-btn--copy-image { display: none !important; }
+  .am-btn--export, .am-export { display: none !important; }
+  .am-bar-fit .am-head::before { display: none; }
   body { background: var(--paper); }
   .am-panel { break-inside: avoid; box-shadow: none; }
   /* Paper does not scroll: a diagram shrinks to the page again (also below the phone breakpoint, whose rule lifts max-width), and nothing fades. */
@@ -722,7 +754,7 @@ table.am-mark { background: none; }
 .am-remark-kind::before { content: attr(data-n); margin-inline-end: 5px; color: var(--ink-3); font-family: var(--font-mono); font-size: var(--am-fs-label); }
 @media print { .am-remark-pop { display: none !important; } }
 `;
-var RUNTIME_JS = "(() => {\n// How a formula reads in a quote. MathML has no plain text, so src/math.js writes the formula as the draft wrote it, delimiters included, in\n// data-am-tex on the <math> element, and the Remark and Reply scripts read page text through this file. On a page without math there is no\n// such element, so formulaOf is null and every text comes out as it did before.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n\nconst TEX = 'data-am-tex';\n\n// The formula that holds a node, or null.\nconst formulaOf = (node) => node.parentElement?.closest(`[${TEX}]`) ?? null;\n\nconst firstText = (el) => {\n  for (const child of el.childNodes) {\n    const found = child.nodeType === 3 ? child : firstText(child);\n    if (found) return found;\n  }\n  return null;\n};\n\n// What a text node adds to a quote: its data. The first text node of a formula adds the formula, and the others add nothing.\n// (A formula in an error style is plain text with its delimiters, not a <math>, so it comes out once.)\nfunction nodeText(node) {\n  const math = formulaOf(node);\n  if (!math) return node.data;\n  return firstText(math) === node ? math.getAttribute(TEX) : '';\n}\n\n// The text of a node as textContent reads it, but with each formula as written.\nconst textWithMath = (node) => (node.nodeType === 3 ? nodeText(node) : [...node.childNodes].map(textWithMath).join(''));\n\n(() => {\n  const root = document.documentElement;\n  // A host that serves this page inside its own document leaves the real root without the page's settings. The toolbar keeps a copy;\n  // set back what the root lacks, before anything below reads the root. A root's own value, even an empty one, is kept, except a\n  // theme or mode that no toolbar option names: that is the host's own setting (the Claude desktop app sets data-theme=\"dark\"), and\n  // keeping it would leave the page unstyled.\n  const carrier = document.querySelector('.am-toolbar');\n  const listFor = { 'data-theme': 'theme', 'data-mode': 'mode' };\n  const foreign = (attr, value) => {\n    const options = listFor[attr] && document.querySelector(`select[data-am=\"${listFor[attr]}\"]`)?.options;\n    return Boolean(value) && options != null && ![...options].some((o) => o.value === value);\n  };\n  for (const [attr, key] of [['lang', 'data-am-root-lang'], ['dir', 'data-am-root-dir'], ['data-theme', 'data-am-root-theme'], ['data-mode', 'data-am-root-mode'], ['data-style', 'data-am-root-style']]) {\n    const own = root.getAttribute(attr);\n    if ((own === null || foreign(attr, own)) && carrier?.getAttribute(key) != null) root.setAttribute(attr, carrier.getAttribute(key));\n  }\n  // Each toolbar list sets one root attribute; its options name the values, so the runtime names no theme or mode.\n  for (const [name, attr] of [['theme', 'data-theme'], ['mode', 'data-mode']]) {\n    const select = document.querySelector(`select[data-am=\"${name}\"]`);\n    if (!select) continue;\n    select.value = root.getAttribute(attr);\n    select.addEventListener('change', () => root.setAttribute(attr, select.value));\n  }\n\n  // \u2500\u2500 Text size \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  // A\u2212 / A+ set --am-scale on the root; every page size and line (src/themes/type-scale.js) follows it, and the drawing boxes grow\n  // with it while their viewBox keeps the units Node measured. The buttons carry the range from SCALE, so this script keeps no\n  // second copy of the numbers. A reader's choice is remembered in this browser and wins over the page's own scale; where storage\n  // is off (am serve, file://) it lasts for this tab, and the click still works.\n  const scaleDown = document.querySelector('[data-am=\"scale-down\"]');\n  const scaleUp = document.querySelector('[data-am=\"scale-up\"]');\n  if (scaleDown && scaleUp) {\n    const min = Number(scaleDown.dataset.min);\n    const max = Number(scaleDown.dataset.max);\n    const step = Number(scaleDown.dataset.step);\n    const storeKey = 'am-scale';\n    let value;\n\n    const inRange = (n) => Number.isFinite(n) && n >= min && n <= max;\n    const savedScale = () => {\n      try {\n        return Number(localStorage.getItem(storeKey));\n      } catch {\n        return NaN;\n      }\n    };\n    const saveScale = (n) => {\n      try {\n        localStorage.setItem(storeKey, String(n));\n      } catch {\n        // Storage may be off (am serve, file://); the size then lasts until the tab closes.\n      }\n    };\n\n    const updateButtons = () => {\n      const setUnavailable = (btn, unavailable) => {\n        if (unavailable) btn.setAttribute('aria-disabled', 'true');\n        else btn.removeAttribute('aria-disabled');\n      };\n      setUnavailable(scaleDown, value <= min);\n      setUnavailable(scaleUp, value >= max);\n    };\n\n    // One step is a multiple of `step`: Math.round first, then two decimals, so 1.1500000000000001 becomes 1.15.\n    const setScale = (next, remember = false) => {\n      value = Math.min(max, Math.max(min, Number((Math.round(next / step) * step).toFixed(2))));\n      root.style.setProperty('--am-scale', String(value));\n      for (const svg of document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas) > svg[role=\"img\"]')) {\n        const box = svg.viewBox?.baseVal;\n        if (!box || !(box.width > 0) || !(box.height > 0)) continue;\n        svg.setAttribute('width', String(Math.ceil(box.width * value)));\n        svg.setAttribute('height', String(Math.ceil(box.height * value)));\n      }\n      updateButtons();\n      if (remember) saveScale(value);\n      window.dispatchEvent(new Event('am-scale'));\n    };\n\n    // A page with no stored choice is left exactly as it was rendered: no inline variable, no svg rewrite, no extra layout pass.\n    value = parseFloat(getComputedStyle(root).getPropertyValue('--am-scale')) || 1;\n    updateButtons();\n    const saved = savedScale();\n    if (inRange(saved) && saved !== value) setScale(saved);\n    scaleDown.hidden = false;\n    scaleUp.hidden = false;\n    scaleDown.addEventListener('click', () => {\n      if (scaleDown.getAttribute('aria-disabled') === 'true') return;\n      setScale(value - step, true);\n    });\n    scaleUp.addEventListener('click', () => {\n      if (scaleUp.getAttribute('aria-disabled') === 'true') return;\n      setScale(value + step, true);\n    });\n  }\n\n  // A phone cannot show the whole toolbar. Its end (Reply, Remark, Copy source) is what a phone showed before the text-size\n  // buttons, so open at that end: Theme, Mode and A\u2212 / A+ are reached by scrolling toward the start. A reader scroll leaves the\n  // position we set, so a later resize does not pull the toolbar back.\n  if (carrier) {\n    const rtl = getComputedStyle(carrier).direction === 'rtl';\n    let lastProgrammatic = null;\n    let readerScrolled = false;\n    const scrollToEnd = () => {\n      if (carrier.scrollWidth <= carrier.clientWidth) return;\n      // Chrome keeps a right-to-left box's scrollLeft negative; the browser clamps either value to the real end.\n      carrier.scrollTo({ left: rtl ? -carrier.scrollWidth : carrier.scrollWidth });\n      lastProgrammatic = carrier.scrollLeft;\n    };\n    carrier.addEventListener('scroll', () => {\n      if (Math.abs(carrier.scrollLeft - lastProgrammatic) > 1) readerScrolled = true;\n    });\n    scrollToEnd();\n    addEventListener('resize', () => {\n      if (!readerScrolled) scrollToEnd();\n    });\n  }\n\n  const copyText = async (text) => {\n    try {\n      await navigator.clipboard.writeText(text);\n    } catch {\n      const ta = Object.assign(document.createElement('textarea'), { value: text });\n      document.body.append(ta);\n      ta.select();\n      document.execCommand('copy');\n      ta.remove();\n    }\n  };\n  // A button reads its label from data-done for a moment after a copy, then comes back to the label it started from. That label is\n  // read once, here: a second click inside the moment would otherwise read the copied label off the button and restore that instead,\n  // and the label would never come back. The moment starts again on each click: the timer of the previous one is left to fire and\n  // does nothing (a token, so this needs no timer bookkeeping the page scripts do not already have).\n  const flasher = (btn) => {\n    const idle = btn.textContent;\n    let clicks = 0;\n    return () => {\n      btn.textContent = btn.dataset.done;\n      const mine = ++clicks;\n      setTimeout(() => { if (mine === clicks) btn.textContent = idle; }, 1400);\n    };\n  };\n\n  const copyBtn = document.querySelector('[data-am=\"copy\"]');\n  if (copyBtn) {\n    const flash = flasher(copyBtn);\n    copyBtn.addEventListener('click', async () => {\n      const nodes = document.querySelectorAll('#am-source');\n      await copyText(nodes[nodes.length - 1]?.value ?? '');\n      flash();\n    });\n  }\n\n  // Each code block copies its own lines, without the line numbers.\n  for (const btn of document.querySelectorAll('[data-am=\"copy-code\"]')) {\n    const flash = flasher(btn);\n    btn.addEventListener('click', async () => {\n      const lines = btn.closest('.am-codeblock')?.querySelectorAll('.am-ln') ?? [];\n      await copyText([...lines].map((l) => l.textContent).join('\\n'));\n      flash();\n    });\n  }\n\n  // \u2500\u2500 Sideways scroll cue \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  // Overlay scrollbars (macOS) show nothing until the reader scrolls, so a wide code block or diagram looked cut off. While a box\n  // hides content past its left or right edge it carries am-more-left / am-more-right, and base.css fades that edge. The sides are\n  // physical because a box can read in the other direction than the page (code stays left to right on a right-to-left page); there\n  // scrollLeft counts down from 0, so the hidden amounts use its size.\n  const scrollers = document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas), .am-code, .am-annot-scroll');\n  const markMore = (el) => {\n    const hidden = el.scrollWidth - el.clientWidth;\n    let left = false;\n    let right = false;\n    if (hidden > 1) {\n      const atStart = Math.abs(el.scrollLeft);\n      const rtl = getComputedStyle(el).direction === 'rtl';\n      [left, right] = rtl ? [atStart < hidden - 1, atStart > 1] : [atStart > 1, atStart < hidden - 1];\n    }\n    el.classList.toggle('am-more-left', left);\n    el.classList.toggle('am-more-right', right);\n  };\n  if (scrollers.length) {\n    const resized = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => entries.forEach((e) => markMore(e.target))) : null;\n    for (const el of scrollers) {\n      el.addEventListener('scroll', () => markMore(el), { passive: true });\n      resized?.observe(el);\n      markMore(el);\n    }\n  }\n\n  // \u2500\u2500 Diagram Lightbox & Pan-Zoom Viewer \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  const diagrams = document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas)');\n  const lb = document.querySelector('.am-lightbox');\n  if (diagrams.length && lb) {\n    const backdrop = lb.querySelector('.am-lightbox-backdrop');\n    const titleText = lb.querySelector('.am-lightbox-title-text');\n    const stage = lb.querySelector('.am-lightbox-stage');\n    const canvas = lb.querySelector('.am-lightbox-canvas');\n    const closeBtn = lb.querySelector('.am-lightbox-close');\n    const expandLabel = lb.getAttribute('data-expand') || 'Expand diagram';\n\n    let scale = 1, x = 0, y = 0, fitScale = 1, curVw = 800, curVh = 600;\n    let isDragging = false, activePointerId = null, startX = 0, startY = 0, origX = 0, origY = 0;\n    let lastTrigger = null;\n\n    const apply = () => {\n      canvas.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;\n    };\n\n    const zoomTo = (newScale, pivotX, pivotY) => {\n      newScale = Math.max(0.2, Math.min(6.0, newScale));\n      if (Math.abs(newScale - scale) < 0.0001) return;\n      const r = newScale / scale;\n      x = pivotX - (pivotX - x) * r;\n      y = pivotY - (pivotY - y) * r;\n      scale = newScale;\n      apply();\n    };\n\n    const open = (diag, trigger) => {\n      const svg = [...diag.children].find((el) => el.tagName.toLowerCase() === 'svg');\n      if (!svg) return;\n      lastTrigger = trigger;\n\n      const panel = diag.closest('.am-panel');\n      const panelTitle = panel?.querySelector('.am-panel-head h2')?.textContent?.trim() || panel?.querySelector('h2')?.textContent?.trim() || lb.getAttribute('aria-label') || 'Diagram viewer';\n      if (titleText) titleText.textContent = panelTitle;\n\n      const clone = svg.cloneNode(true);\n      const defElements = clone.querySelectorAll('[id]');\n      if (defElements.length) {\n        const idMap = new Map();\n        defElements.forEach((el, i) => {\n          const oldId = el.id;\n          const newId = `${oldId}-lb-${i}`;\n          idMap.set(oldId, newId);\n          el.id = newId;\n        });\n        const urlAttrs = ['marker-start', 'marker-mid', 'marker-end', 'fill', 'stroke', 'filter', 'clip-path', 'mask'];\n        clone.querySelectorAll('*').forEach((el) => {\n          for (const attr of urlAttrs) {\n            const val = el.getAttribute(attr);\n            if (val && val.startsWith('url(#')) {\n              const id = val.slice(5, -1);\n              if (idMap.has(id)) el.setAttribute(attr, `url(#${idMap.get(id)})`);\n            }\n          }\n          const href = el.getAttribute('href') || el.getAttribute('xlink:href');\n          if (href && href.startsWith('#')) {\n            const id = href.slice(1);\n            if (idMap.has(id)) {\n              if (el.hasAttribute('href')) el.setAttribute('href', `#${idMap.get(id)}`);\n              if (el.hasAttribute('xlink:href')) el.setAttribute('xlink:href', `#${idMap.get(id)}`);\n            }\n          }\n        });\n      }\n\n      const vb = svg.viewBox?.baseVal;\n      curVw = (vb && vb.width > 0) ? vb.width : (parseFloat(svg.getAttribute('width')) || svg.clientWidth || 800);\n      curVh = (vb && vb.height > 0) ? vb.height : (parseFloat(svg.getAttribute('height')) || svg.clientHeight || 600);\n      // The panel's svg carries the reading floor as min-width (layout-dom.js floorDiagrams); the viewer sizes the clone itself.\n      clone.style.minWidth = '';\n      clone.style.width = `${curVw}px`;\n      clone.style.height = `${curVh}px`;\n      canvas.innerHTML = '';\n      canvas.append(clone);\n      lb.removeAttribute('hidden');\n      document.body.style.overflow = 'hidden';\n\n      const rect = stage.getBoundingClientRect();\n      const pad = 48;\n      const availW = Math.max(100, rect.width - pad * 2);\n      const availH = Math.max(100, rect.height - pad * 2);\n      fitScale = Math.min(availW / curVw, availH / curVh, 1.0);\n      scale = fitScale;\n      x = (rect.width - curVw * scale) / 2;\n      y = (rect.height - curVh * scale) / 2;\n      apply();\n      closeBtn.focus();\n    };\n\n    const close = () => {\n      if (lb.hasAttribute('hidden')) return;\n      lb.setAttribute('hidden', '');\n      canvas.innerHTML = '';\n      document.body.style.overflow = '';\n      lastTrigger?.focus();\n    };\n\n    stage.addEventListener('wheel', (e) => {\n      e.preventDefault();\n      const rect = stage.getBoundingClientRect();\n      const dy = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);\n      const factor = Math.exp(-Math.max(-200, Math.min(200, dy)) * 0.0015);\n      zoomTo(scale * factor, e.clientX - rect.left, e.clientY - rect.top);\n    }, { passive: false });\n\n    stage.addEventListener('pointerdown', (e) => {\n      if (e.button !== 0 || isDragging) return;\n      isDragging = true;\n      activePointerId = e.pointerId;\n      startX = e.clientX;\n      startY = e.clientY;\n      origX = x;\n      origY = y;\n      stage.setPointerCapture(e.pointerId);\n      stage.classList.add('am-panning');\n    });\n\n    stage.addEventListener('pointermove', (e) => {\n      if (!isDragging || e.pointerId !== activePointerId) return;\n      x = origX + (e.clientX - startX);\n      y = origY + (e.clientY - startY);\n      apply();\n    });\n\n    const endDrag = (e) => {\n      if (!isDragging || e.pointerId !== activePointerId) return;\n      isDragging = false;\n      activePointerId = null;\n      stage.classList.remove('am-panning');\n      try { stage.releasePointerCapture(e.pointerId); } catch {}\n    };\n    stage.addEventListener('pointerup', endDrag);\n    stage.addEventListener('pointercancel', endDrag);\n\n    stage.addEventListener('dblclick', () => {\n      const rect = stage.getBoundingClientRect();\n      scale = fitScale;\n      x = (rect.width - curVw * scale) / 2;\n      y = (rect.height - curVh * scale) / 2;\n      apply();\n    });\n\n    closeBtn.addEventListener('click', close);\n    backdrop.addEventListener('click', close);\n    window.addEventListener('keydown', (e) => {\n      if (e.key === 'Escape' && !lb.hasAttribute('hidden')) close();\n    });\n\n    lb.addEventListener('keydown', (e) => {\n      if (e.key !== 'Tab') return;\n      const focusables = lb.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex=\"-1\"])');\n      if (!focusables.length) return;\n      const first = focusables[0];\n      const last = focusables[focusables.length - 1];\n      if (e.shiftKey && document.activeElement === first) {\n        e.preventDefault();\n        last.focus();\n      } else if (!e.shiftKey && document.activeElement === last) {\n        e.preventDefault();\n        first.focus();\n      }\n    });\n\n    const expandSvg = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"15 3 21 3 21 9\"></polyline><polyline points=\"9 21 3 21 3 15\"></polyline><line x1=\"21\" y1=\"3\" x2=\"14\" y2=\"10\"></line><line x1=\"3\" y1=\"21\" x2=\"10\" y2=\"14\"></line></svg>';\n    diagrams.forEach((diag) => {\n      const btn = document.createElement('button');\n      btn.type = 'button';\n      btn.className = 'am-diagram-expand';\n      btn.title = expandLabel;\n      btn.setAttribute('aria-label', expandLabel);\n      btn.innerHTML = expandSvg;\n      btn.addEventListener('click', () => open(diag, btn));\n      diag.prepend(btn);\n    });\n  }\n})();\n(() => {\n// The reply a reader copies from the page: one Markdown text with the decisions, the panel comments and the block remarks.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n// decisions: [{ panel, question, picked: [label], suggested: [label], touched }]; comments: [{ panel, title, text }];\n// remarks: [{ panel, quote, kind, note }], where quote is the start of the marked block and kind is a key of ui.kinds.\n// Comment and remark text is quoted line by line, so text the reader typed cannot pass as part of the structure.\n// rtl: the page reads right to left, so the arrow before each answer points left, the way the text runs.\nfunction replyText({ title, decisions, comments, remarks = [], ui, rtl = false }) {\n  const arrow = rtl ? '\u2190' : '\u2192';\n  const out = [`# Re: ${title}`];\n  if (decisions.length) {\n    out.push('', `## ${ui.decisions}`);\n    decisions.forEach((d, i) => {\n      const answer = d.picked.length ? d.picked.map((l) => `**${l}**`).join(', ') : '**\u2014**';\n      // Every option starts unselected, so an ask the reader never clicked has no answer: the reply names the suggestion\n      // instead of passing it off as the reader's choice.\n      const same = d.picked.length === d.suggested.length && d.picked.every((l) => d.suggested.includes(l));\n      const suggested = d.suggested.join(', ') || '\u2014';\n      const why = !d.touched ? `${ui.untouched}: ${suggested}` : same ? ui.confirmed : `${ui.was}: ${suggested}`;\n      out.push(`${i + 1}. [${d.panel}] ${d.question}`, `   ${arrow} ${answer} _(${why})_`);\n    });\n  }\n  const written = comments.filter((c) => c.text.trim());\n  const quoted = (text) => (text.trim() ? text.trim().split('\\n').map((l) => `  > ${l}`) : []);\n  if (written.length) {\n    out.push('', `## ${ui.comments}`);\n    for (const c of written) out.push(`- **${c.panel} \xB7 ${c.title}**`, ...quoted(c.text));\n  }\n  if (remarks.length) {\n    out.push('', `## ${ui.remarks}`);\n    for (const r of remarks) {\n      const label = [r.panel, ui.kinds?.[r.kind] ?? r.kind].filter(Boolean).join(' \xB7 ');\n      out.push(`- **${label}** \"${r.quote}\"`, ...quoted(r.note));\n    }\n  }\n  if (written.length || remarks.some((r) => r.note.trim())) out.push('', `_${ui.typed}_`);\n  return `${out.join('\\n')}\\n`;\n}\n\n// A letter of a right-to-left script. One definition for the page builder (src/bidi.js) and for the right-to-left page script\n// (src/runtime/reply-view.js), so the two cannot drift apart. A plain ES module; the page script gets this file in front of\n// reply-view.js, with its `export` keyword dropped and reply-view.js's import of it removed (src/runtime/compose.js).\nconst RTL_LETTER = /[\\p{Script=Hebrew}\\p{Script=Arabic}\\p{Script=Syriac}\\p{Script=Thaana}\\p{Script=Nko}\\p{Script=Samaritan}\\p{Script=Mandaic}]/u;\n\n// The reply as the reader sees it in the Reply sheet (src/runtime/reply.js): the Markdown that Copy copies, drawn as headings, bold answers\n// and quoted comments instead of raw \"# Re: ...\", \"1. [E] ...\" and \"- **A \xB7 ...**\" lines. Each line gets its own direction, so a\n// Hebrew reader sees Latin answers and paths in place; a line with no right-to-left letter reads left to right, as on any other page.\n// The raw Markdown stays in the sheet under a fold, so the copied text does not change.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped and rtl-letter.js in front of it in place of the\n// import (src/runtime/compose.js).\n\nconst escHtml = (s) => s.replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' })[c]);\n// A line with a right-to-left letter reads right to left; a line without one (an English comment, a path) reads left to right.\nconst dirOf = (s) => (RTL_LETTER.test(s) ? 'rtl' : 'ltr');\n\n// The only inline Markdown src/runtime/reply-text.js writes: **answer**, _(note)_ and the \"quote\" of a remark. Each piece is isolated in its own direction,\n// so a Latin answer inside a Hebrew line keeps its place, and \"A \xB7 title\" still starts with the panel letter.\nconst piece = (tag, text) => `<${tag}><bdi dir=\"${dirOf(text)}\">${text}</bdi></${tag}>`;\nfunction inline(s) {\n  return escHtml(s)\n    .replace(/\\*\\*(.+?)\\*\\*/g, (_, t) => piece('strong', t))\n    .replace(/(^|\\s)_(.+?)_(?=\\s|$)/g, (_, pre, t) => pre + piece('em', t))\n    // The quoted start of a marked block (\"- **A \xB7 concern** \"text\"\"): isolated, so Latin text in a Hebrew line keeps its place.\n    .replace(/&quot;(.+)&quot;$/, (_, t) => `&quot;<bdi dir=\"${dirOf(t)}\">${t}</bdi>&quot;`);\n}\n\n// The reply text (src/runtime/reply-text.js) as HTML, one block per line.\nfunction replyViewHtml(text) {\n  return text\n    .replace(/\\n$/, '')\n    .split('\\n')\n    .map((line) => {\n      const dir = dirOf(line);\n      let m;\n      if (!line.trim()) return '<div class=\"am-rv-gap\"></div>';\n      if ((m = line.match(/^(#{1,2}) (.*)$/))) return `<div class=\"am-rv-h${m[1].length}\" dir=\"${dir}\">${inline(m[2])}</div>`;\n      if ((m = line.match(/^(\\d+)\\. \\[([^\\]]*)\\] (.*)$/))) {\n        return `<div class=\"am-rv-q\" dir=\"${dir}\"><bdi>${m[1]}.</bdi> <bdi class=\"am-rv-tag\">${escHtml(m[2])}</bdi> ${inline(m[3])}</div>`;\n      }\n      if ((m = line.match(/^ {3}([\u2190\u2192]) (.*)$/))) return `<div class=\"am-rv-a\" dir=\"${dir}\">${m[1]} ${inline(m[2])}</div>`;\n      if ((m = line.match(/^- (.*)$/))) return `<div class=\"am-rv-c\" dir=\"${dir}\">${inline(m[1])}</div>`;\n      // A comment line is shown exactly as the reader typed it.\n      if ((m = line.match(/^ {2}> ?(.*)$/))) return `<div class=\"am-rv-quote\" dir=\"${dirOf(m[1])}\">${escHtml(m[1]) || '&nbsp;'}</div>`;\n      return `<div dir=\"${dir}\">${inline(line)}</div>`;\n    })\n    .join('');\n}\n\n// Answer on the page: every panel gets a Comment box, and the Reply button collects the ask answers, the comments and the remarks\n// into one Markdown reply (replyText) to copy back to the agent. Answers and comments stay in localStorage across reloads.\n// The remark script (remark.js) adds the blocks the reader marked, through window.__amRemarkData, and tells this script about a change\n// with an \"am-remark-change\" event on the document.\n// The Reply sheet shows the reply drawn (replyViewHtml) with the Markdown that Copy copies under a fold. Once the reader has given any\n// input, a bar at the bottom of the page shows the counts and copies the reply in one click, so there is no trip to the top-right button.\nconst replyBtn = document.querySelector('[data-am=\"reply\"]');\nconst COMMENT_ICON = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"></path></svg>';\nif (replyBtn) {\n  const ui = JSON.parse(replyBtn.dataset.ui);\n  const storeKey = `am-reply:${location.pathname}`;\n  // A page served by `am serve` runs without localStorage and the phone may discard its tab, so it keeps the answers on the\n  // server: data-am-save names the write route and data-am-state carries what the server already holds for this page version.\n  const serve = (() => {\n    const { amSave: save, amState: state } = document.body?.dataset ?? {};\n    if (!save) return null;\n    try {\n      return { save, restored: state ? JSON.parse(state) : null };\n    } catch {\n      return { save, restored: null };\n    }\n  })();\n  let saveTimer = null;\n  let pendingPatch = null;\n  const sendSave = (patch) => {\n    fetch(serve.save, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch), keepalive: true })\n      .catch(() => {}); // a page that cannot reach the server keeps its state until it closes, as before\n  };\n  // Typing must not put one request per keystroke on the server; localStorage is written at once, the network follows.\n  const saveSoon = (patch) => {\n    clearTimeout(saveTimer);\n    pendingPatch = patch;\n    saveTimer = setTimeout(() => {\n      pendingPatch = null;\n      sendSave(patch);\n    }, 400);\n  };\n  // A hidden or closing page sends the change it still holds, before the timer can run.\n  const flushSave = () => {\n    if (!pendingPatch) return;\n    clearTimeout(saveTimer);\n    sendSave(pendingPatch);\n    pendingPatch = null;\n  };\n  document.addEventListener('visibilitychange', () => {\n    if (document.visibilityState === 'hidden') flushSave();\n  });\n  window.addEventListener('pagehide', flushSave);\n  // A preview may draw a mock panel; it gets no comment box and cannot shadow the real panel's id.\n  const panels = [...document.querySelectorAll('.am-panel')].filter((panel) => !panel.closest('.am-ask-preview'));\n  // An ask inside a preview is part of the drawing, not a decision of the page.\n  const asks = [...document.querySelectorAll('.am-ask')].filter((a) => !a.closest('.am-ask-preview'));\n  // Answers are saved by question text, so they still match after am patch has renumbered the asks.\n  // Page text without the word joiners a right-to-left page puts after a Hebrew prefix hyphen (src/bidi.js): the reply and the saved\n  // answers hold the text as the draft wrote it, a formula too (src/runtime/math-text.js).\n  const WJ = new RegExp(String.fromCharCode(0x2060), 'g');\n  const textOf = (el) => el && textWithMath(el).replace(WJ, '').trim();\n  const keyOf = (ask) => textOf(ask.querySelector('legend')) ?? ask.dataset.ask;\n  const touched = new Set();\n  const boxes = new Map();\n  // The bar is built below with the sheet; the handlers that change the counts only call this.\n  let refreshBar = () => {};\n  // The textarea a failed copy keeps selected, so the reader can still use the keyboard shortcut.\n  let stuck = null;\n\n  const load = () => {\n    if (serve?.restored?.reply) return serve.restored.reply;\n    try {\n      return JSON.parse(localStorage.getItem(storeKey)) || {};\n    } catch {\n      return {};\n    }\n  };\n  const save = () => {\n    const state = {\n      asks: Object.fromEntries(asks.map((a) => [keyOf(a), { picked: picked(a), touched: touched.has(a) }])),\n      comments: Object.fromEntries([...boxes].map(([id, box]) => [id, box.value]).filter(([, text]) => text.trim())),\n    };\n    try {\n      localStorage.setItem(storeKey, JSON.stringify(state));\n    } catch {\n      // Storage may be off (private window, file:// policy); answers then last until the page closes.\n    }\n    if (serve) saveSoon({ reply: state });\n  };\n  // A preview can hold a mock form; those controls are a picture, not the reader's answer.\n  const inputsOf = (ask) => [...ask.querySelectorAll('input')].filter((i) => !i.closest('.am-ask-preview'));\n  const picked = (ask) => inputsOf(ask).filter((i) => i.checked).map((i) => i.value);\n  const panelOf = (el) => {\n    const panel = el.closest('.am-panel');\n    return { id: panel?.id.replace(/^panel-/, '') ?? '', title: textOf(panel?.querySelector('.am-panel-head h2')) ?? '' };\n  };\n\n  const saved = load();\n  for (const ask of asks) {\n    const inputs = inputsOf(ask);\n    const state = saved.asks?.[keyOf(ask)];\n    // A saved answer applies only while every picked option still exists on the page, and only if the reader clicked: older versions started\n    // with the suggestion selected and saved it untouched, and that state must come back unselected.\n    if (state?.touched && Array.isArray(state.picked) && state.picked.every((v) => inputs.some((i) => i.value === v))) {\n      for (const input of inputs) input.checked = state.picked.includes(input.value);\n      touched.add(ask);\n    }\n    // A click counts even on the option that is already picked: the reader confirms the suggestion.\n    const answer = (e) => {\n      if (e?.target?.closest?.('.am-ask-preview')) return;\n      touched.add(ask);\n      save();\n      refreshBar();\n    };\n    ask.addEventListener('change', answer);\n    ask.addEventListener('click', (e) => { if (e.target.matches('input')) answer(e); });\n    // In cards the whole card looks clickable, so a click on its preview picks the option too. A control in the drawing is not the answer.\n    ask.addEventListener('click', (e) => {\n      if (!ask.classList.contains('am-ask--cards')) return;\n      if (!e.target.closest?.('.am-ask-preview') || e.target.closest('input, button, a, select, textarea, summary, label')) return;\n      const input = e.target.closest('.am-ask-card')?.querySelector('input');\n      if (!input) return;\n      const wasPicked = input.checked;\n      input.click();\n      // A radio that is already on sends no change event, and the click still confirms the suggestion.\n      if (wasPicked && input.type === 'radio') answer();\n    });\n  }\n\n  for (const panel of panels) {\n    const id = panel.id.replace(/^panel-/, '');\n    // An icon only: narrow panels have no room for a word next to the title.\n    const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'am-comment-btn', title: ui.comment, innerHTML: COMMENT_ICON });\n    btn.setAttribute('aria-label', `${ui.comment} ${id}`);\n    btn.setAttribute('aria-expanded', 'false');\n    const wrap = Object.assign(document.createElement('div'), { className: 'am-comment', hidden: true });\n    const box = Object.assign(document.createElement('textarea'), { rows: 3, placeholder: ui.commentHint, value: saved.comments?.[id] ?? '' });\n    box.setAttribute('aria-label', `${ui.comment} ${id}`);\n    wrap.append(box);\n    const show = (open) => {\n      wrap.hidden = !open;\n      btn.setAttribute('aria-expanded', String(open));\n    };\n    btn.addEventListener('click', () => {\n      show(wrap.hidden);\n      if (!wrap.hidden) box.focus();\n    });\n    box.addEventListener('input', () => {\n      btn.classList.toggle('am-comment-btn--on', Boolean(box.value.trim()));\n      save();\n      refreshBar();\n    });\n    btn.classList.toggle('am-comment-btn--on', Boolean(box.value.trim()));\n    if (box.value.trim()) show(true);\n    (panel.querySelector('.am-panel-head') ?? panel).append(btn);\n    panel.append(wrap);\n    boxes.set(id, box);\n  }\n\n  const sheet = document.createElement('dialog');\n  sheet.className = 'am-reply';\n  sheet.setAttribute('aria-label', ui.title);\n  sheet.innerHTML = '<div class=\"am-reply-head\"><strong></strong><span></span></div><div class=\"am-reply-view\" tabindex=\"0\"></div><details class=\"am-reply-raw\"><summary></summary><textarea readonly rows=\"10\"></textarea></details><div class=\"am-reply-actions\"><button type=\"button\" class=\"am-btn\" data-act=\"copy\"></button><button type=\"button\" class=\"am-btn\" data-act=\"close\"></button></div>';\n  sheet.querySelector('strong').textContent = ui.title;\n  sheet.querySelector('span').textContent = ui.hint;\n  sheet.querySelector('summary').textContent = ui.raw;\n  const view = sheet.querySelector('.am-reply-view');\n  const raw = sheet.querySelector('details');\n  const text = sheet.querySelector('textarea');\n  const copy = sheet.querySelector('[data-act=\"copy\"]');\n  const close = sheet.querySelector('[data-act=\"close\"]');\n  copy.textContent = ui.copy;\n  close.textContent = ui.close;\n  document.body.append(sheet);\n\n  const compose = () => {\n    const decisions = asks.map((ask) => ({\n      panel: panelOf(ask).id,\n      question: textOf(ask.querySelector('legend')) ?? '',\n      picked: picked(ask),\n      suggested: inputsOf(ask).filter((i) => i.hasAttribute('data-suggested')).map((i) => i.value),\n      touched: touched.has(ask),\n    }));\n    const comments = [...boxes].map(([id, box]) => ({ panel: id, title: panelOf(box).title, text: box.value }));\n    const remarks = window.__amRemarkData?.() ?? [];\n    const empty = !decisions.length && !comments.some((c) => c.text.trim()) && !remarks.length;\n    const title = textOf(document.querySelector('.am-head h1')) ?? document.title;\n    return empty ? '' : replyText({ title, decisions, comments, remarks, ui, rtl: document.documentElement.dir === 'rtl' });\n  };\n\n  // The text goes through the clipboard API; a page the browser treats as insecure (file://) falls back to selecting a temporary\n  // textarea, because the sheet's own textarea can sit inside a closed fold, where it cannot be selected.\n  // That fallback reports whether it worked. When it does not, the text stays selected (so Cmd/Ctrl+C still copies it) and the\n  // button says what to do instead of showing the \"Copied \u2713\" label the reader cannot trust.\n  const copyText = async (str, btn) => {\n    stuck?.remove();\n    stuck = null;\n    try {\n      await navigator.clipboard.writeText(str);\n      // The close_after_reply script (close-after-reply.js) closes the tab once the reply is on the clipboard.\n      document.dispatchEvent(new Event('am-reply-copied'));\n    } catch {\n      const tmp = Object.assign(document.createElement('textarea'), { value: str });\n      tmp.style.cssText = 'position:fixed;top:-100px;opacity:0';\n      // Inside the sheet while it is open: while a modal dialog is open the rest of the document cannot take focus, so a textarea\n      // in the body can be selected but not focused, and the keyboard shortcut the reader is told to press would copy nothing.\n      // The bottom bar copies while the sheet is closed, and a closed dialog is not rendered, so there the textarea goes in the body.\n      (sheet.open ? sheet : document.body).append(tmp);\n      tmp.select();\n      let copied = false;\n      try {\n        copied = document.execCommand('copy');\n      } catch {\n        copied = false;\n      }\n      if (!copied) {\n        stuck = tmp;\n        btn.textContent = ui.copyFailed;\n        setTimeout(() => { btn.textContent = ui.copy; }, 3000);\n        return;\n      }\n      tmp.remove();\n    }\n    btn.textContent = ui.done;\n    setTimeout(() => { btn.textContent = ui.copy; }, 1400);\n  };\n\n  const open = () => {\n    const reply = compose();\n    if (reply) view.innerHTML = replyViewHtml(reply);\n    else view.textContent = ui.empty;\n    view.scrollTop = 0;\n    text.value = reply;\n    raw.open = false;\n    raw.hidden = !reply;\n    copy.disabled = !reply;\n    if (sheet.showModal) sheet.showModal();\n    else sheet.setAttribute('open', '');\n    (reply ? copy : close).focus();\n  };\n  replyBtn.addEventListener('click', open);\n  close.addEventListener('click', () => (sheet.close ? sheet.close() : sheet.removeAttribute('open')));\n  // A failed copy leaves the text selected for Cmd/Ctrl+C; closing the sheet drops that textarea.\n  sheet.addEventListener('close', () => { stuck?.remove(); stuck = null; });\n  copy.addEventListener('click', () => copyText(text.value, copy));\n\n  const bar = Object.assign(document.createElement('div'), { className: 'am-reply-bar', hidden: true });\n  bar.setAttribute('role', 'region');\n  bar.setAttribute('aria-label', ui.title);\n  const summary = Object.assign(document.createElement('span'), { className: 'am-reply-bar-count' });\n  summary.setAttribute('aria-live', 'polite');\n  const preview = Object.assign(document.createElement('button'), { type: 'button', className: 'am-btn', textContent: ui.preview });\n  const barCopy = Object.assign(document.createElement('button'), { type: 'button', className: 'am-btn am-btn--reply', textContent: ui.copy });\n  preview.addEventListener('click', open);\n  barCopy.addEventListener('click', () => copyText(compose(), barCopy));\n  bar.append(summary, preview, barCopy);\n  document.body.append(bar);\n\n  // The bar shows only the counts that are above zero, and only once there is any input at all.\n  refreshBar = () => {\n    const counts = {\n      answered: touched.size,\n      comments: [...boxes.values()].filter((box) => box.value.trim()).length,\n      remarks: (window.__amRemarkData?.() ?? []).length,\n    };\n    const parts = Object.entries(counts).filter(([, n]) => n > 0).map(([kind, n]) => ui.count[kind].replace('{n}', n));\n    summary.textContent = parts.join(' \xB7 ');\n    bar.hidden = !parts.length;\n    document.body.classList.toggle('am-has-reply-bar', parts.length > 0);\n  };\n  document.addEventListener('am-remark-change', () => refreshBar());\n  // Saved remarks are restored by remark.js, which runs after this script in the same <script> element: its data is not there yet.\n  // A microtask runs when that whole element has finished, so the first count includes them.\n  queueMicrotask(() => refreshBar());\n}\n})();\n(() => {\n// Text helpers for remark mode (src/runtime/remark.js): how a marked block is named and quoted.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n// A block keeps its mark across `am patch` because the key is its panel, its tag and the start of its text, not its position.\n\nconst collapse = (text) => String(text).replace(/\\s+/g, ' ').trim();\n\n// The start of a block's text with whitespace collapsed: the readable identity of the block.\nfunction fingerprint(text, len = 80) {\n  return collapse(text).slice(0, len);\n}\n\n// What the reply quotes of a block: the start of its text, with an ellipsis when it is cut.\nfunction quote(text, len = 60) {\n  const t = collapse(text);\n  return t.length > len ? `${t.slice(0, len).trimEnd()}\u2026` : t;\n}\n\n// Two blocks with the same text (two identical list items) get the same base key. The n-th one in the page gets \"\\t<n>\" added;\n// a tab cannot be in a fingerprint, which has its whitespace collapsed, so the new key never meets another base key.\nfunction occurrenceKeys(bases) {\n  const seen = new Map();\n  return bases.map((base) => {\n    const n = seen.get(base) ?? 0;\n    seen.set(base, n + 1);\n    return n ? `${base}\\t${n}` : base;\n  });\n}\n\n// Remark mode: the reader turns it on, clicks a block, tags it (suggestion, keep, question, concern) and may add a note.\n// A mark shows as a bar and a note chip inside the block, lives in localStorage like panel comments, and the Reply button carries it\n// back to the agent: reply.js calls window.__amRemarkData, and replyText (reply-text.js) writes the Remarks section.\n(() => {\n  const btn = document.querySelector('[data-am=\"remark\"]');\n  if (!btn) return;\n  const ui = JSON.parse(btn.dataset.ui);\n  const KINDS = ['suggestion', 'keep', 'question', 'concern'];\n  const storeKey = `am-remark:${location.pathname}`;\n  // A page served by `am serve` has no localStorage and the phone may discard its tab; it keeps the marks on the server, in the\n  // same record as the answers (reply.js), so a re-opened page finds them again.\n  const serve = (() => {\n    const { amSave: save, amState: state } = document.body?.dataset ?? {};\n    if (!save) return null;\n    try {\n      return { save, restored: state ? JSON.parse(state) : null };\n    } catch {\n      return { save, restored: null };\n    }\n  })();\n  let saveTimer = null;\n  let pendingPatch = null;\n  const sendSave = (patch) => {\n    fetch(serve.save, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch), keepalive: true })\n      .catch(() => {});\n  };\n  const saveSoon = (patch) => {\n    clearTimeout(saveTimer);\n    pendingPatch = patch;\n    saveTimer = setTimeout(() => {\n      pendingPatch = null;\n      sendSave(patch);\n    }, 400);\n  };\n  // A hidden or closing page sends the change it still holds, before the timer can run.\n  const flushSave = () => {\n    if (!pendingPatch) return;\n    clearTimeout(saveTimer);\n    sendSave(pendingPatch);\n    pendingPatch = null;\n  };\n  document.addEventListener('visibilitychange', () => {\n    if (document.visibilityState === 'hidden') flushSave();\n  });\n  window.addEventListener('pagehide', flushSave);\n  // The one definition of a block a reader can mark: the content under <main>. The page and panel titles are left out, because the\n  // reply reads them as text; a panel has its Comment button.\n  // A $$ block on its own is a div; a $$ formula inside a sentence is a span of its paragraph.\n  const BLOCK = 'main :is(h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,dd,dt,figure,div.am-math-block):not(.am-head *, .am-panel-head *, .am-toc *)';\n  // A click on these does what it always did.\n  const LIVE = '.am-remark-pop, .am-toolbar, a, button, input, textarea, select, label';\n  const blockAt = (target) => (target.closest(LIVE) ? null : target.closest(BLOCK));\n\n  const WJ = new RegExp(String.fromCharCode(0x2060), 'g'); // word joiners of a right-to-left page (src/bidi.js); not part of the draft's text\n  // A narrow horizontal timeline shows its date and title inline (src/themes/base.css). They stay parts of their own, so a block key\n  // does not change with the width of the window (#194).\n  const OWN_BOX = '.am-timeline--h .am-tl-when, .am-timeline--h .am-tl-title';\n  const inlineBox = new WeakMap();\n  const isInline = (el) => {\n    if (!inlineBox.has(el)) inlineBox.set(el, !el.matches(OWN_BOX) && getComputedStyle(el).display.startsWith('inline'));\n    return inlineBox.get(el);\n  };\n  // The text of a block as the reader sees it: separate lines, cells and timeline parts are joined by a space (textContent would run\n  // \"2026\" and \"Ship\" together), and the note chip is not part of it. A formula is one box and reads as the TeX the draft wrote\n  // (src/runtime/math-text.js), not as the MathML tokens.\n  const blockText = (el) => {\n    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);\n    let text = '';\n    let last = null;\n    for (let node = walker.nextNode(); node; node = walker.nextNode()) {\n      if (node.parentElement.closest('.am-mark-note')) continue;\n      let box = formulaOf(node) ?? node.parentElement;\n      while (box !== el && isInline(box)) box = box.parentElement;\n      if (last && box !== last) text += ' ';\n      text += nodeText(node).replace(WJ, '');\n      last = box;\n    }\n    return text;\n  };\n\n  const panelOf = (el) => el.closest('.am-panel')?.id.replace(/^panel-/, '') ?? '';\n  // Block keys, in page order. Built when first needed: a page nobody marked pays nothing.\n  let keys = null;\n  const keyMap = () => {\n    if (!keys) {\n      const blocks = [...document.querySelectorAll(BLOCK)];\n      const ids = occurrenceKeys(blocks.map((el) => `${panelOf(el)}|${el.localName}|${fingerprint(blockText(el))}`));\n      keys = new Map(blocks.map((el, i) => [el, ids[i]]));\n    }\n    return keys;\n  };\n\n  const load = () => {\n    const restored = serve?.restored?.remark;\n    if (Array.isArray(restored)) return restored.filter((m) => typeof m?.key === 'string' && KINDS.includes(m.kind));\n    try {\n      const saved = JSON.parse(localStorage.getItem(storeKey));\n      return Array.isArray(saved) ? saved.filter((m) => typeof m?.key === 'string' && KINDS.includes(m.kind)) : [];\n    } catch {\n      return [];\n    }\n  };\n  // A mark whose block is gone from the page stays stored (it may return with `am patch`); it is neither painted nor sent.\n  const marks = new Map(load().map((m) => [m.key, { key: m.key, kind: m.kind, note: String(m.note ?? '') }]));\n  // Kind and note of a popover closed without Save, by block key, until the page reloads (see open below).\n  const drafts = new Map();\n  const clearBtn = document.createElement('button');\n  clearBtn.type = 'button';\n  clearBtn.className = 'am-btn am-btn--remark-clear';\n  clearBtn.textContent = ui.clear;\n  // Clear all drops saved marks and drafts, so it shows while either exists.\n  const toClear = () => marks.size + drafts.size;\n  const showClear = () => { clearBtn.hidden = toClear() === 0; };\n  btn.insertAdjacentElement('afterend', clearBtn);\n  let clearTimer = null;\n  let clearArmed = false;\n  const resetClear = () => {\n    if (clearTimer !== null) clearTimeout(clearTimer);\n    clearTimer = null;\n    clearArmed = false;\n    clearBtn.classList.remove('is-armed');\n    clearBtn.textContent = ui.clear;\n    showClear();\n  };\n  const armClear = () => {\n    clearArmed = true;\n    clearBtn.classList.add('is-armed');\n    clearBtn.textContent = ui.clearConfirm.replace('{n}', toClear());\n    clearTimer = setTimeout(resetClear, 4000);\n  };\n  clearBtn.addEventListener('click', () => {\n    if (!clearArmed) {\n      armClear();\n      return;\n    }\n    for (const el of document.querySelectorAll('.am-mark')) unpaint(el);\n    marks.clear();\n    // A draft is a remark the reader has not saved yet; Clear all drops it too, so no block reopens with an old kind.\n    drafts.clear();\n    try {\n      localStorage.removeItem(storeKey);\n    } catch {\n      // Storage may be off (private window, a sandboxed page); the in-memory marks still clear.\n    }\n    if (serve) saveSoon({ remark: [] });\n    resetClear();\n    document.dispatchEvent(new Event('am-remark-change'));\n  });\n  const save = () => {\n    try {\n      localStorage.setItem(storeKey, JSON.stringify([...marks.values()]));\n    } catch {\n      // Storage may be off (private window, a sandboxed page); marks then last until the page closes.\n    }\n    if (serve) saveSoon({ remark: [...marks.values()] });\n    // The reply bar (reply.js) shows the number of marks.\n    document.dispatchEvent(new Event('am-remark-change'));\n    showClear();\n  };\n\n  const chip = (el, mark) => {\n    const note = document.createElement(el.localName === 'table' ? 'caption' : 'span');\n    note.className = 'am-mark-note';\n    const kind = document.createElement('b');\n    kind.textContent = ui.kinds[mark.kind];\n    note.append(kind, mark.note ? ` ${mark.note}` : '');\n    return note;\n  };\n  const clearChip = (el) => el.querySelector(':scope > .am-mark-note')?.remove();\n  const paint = (el, mark) => {\n    clearChip(el);\n    el.classList.add('am-mark');\n    el.dataset.kind = mark.kind;\n    // Inside the block, so a list item stays a child of its list. A table takes it as its caption; a list item with a sub-list shows\n    // it under its own text, before the sub-list.\n    const sub = el.querySelector(':scope > ul, :scope > ol');\n    if (el.localName === 'table') el.prepend(chip(el, mark));\n    else if (sub) sub.before(chip(el, mark));\n    else el.append(chip(el, mark));\n  };\n  const unpaint = (el) => {\n    clearChip(el);\n    el.classList.remove('am-mark');\n    delete el.dataset.kind;\n  };\n  showClear();\n  if (marks.size) for (const [el, key] of keyMap()) if (marks.has(key)) paint(el, marks.get(key));\n\n  // The popover edits one block. Save stays off until a kind is picked, and a hint says so. 1\u20134 pick a kind from the keyboard and\n  // move to the note; Ctrl / Cmd + Enter saves. A popover closed without Save keeps its kind and note as a draft for that block until the page reloads.\n  const pop = document.createElement('div');\n  pop.className = 'am-remark-pop';\n  pop.hidden = true;\n  pop.setAttribute('role', 'dialog');\n  pop.setAttribute('aria-label', ui.button);\n  document.body.append(pop);\n  let opener = null;\n  let anchor = null;\n  let keepDraft = null;\n  const close = (restoreFocus) => {\n    if (pop.hidden) return;\n    keepDraft?.();\n    keepDraft = null;\n    pop.hidden = true;\n    if (restoreFocus) (opener?.isConnected && opener !== document.body ? opener : btn).focus();\n  };\n  const place = () => {\n    const rect = anchor.getBoundingClientRect();\n    const rtl = getComputedStyle(document.documentElement).direction === 'rtl';\n    const x = rtl ? rect.right - pop.offsetWidth : rect.left;\n    // Under the block; a block taller than the window gets the popover at the bottom of the window instead.\n    const y = Math.min(rect.bottom + 6, window.innerHeight - pop.offsetHeight - 8);\n    pop.style.left = `${window.scrollX + Math.min(Math.max(8, x), window.innerWidth - pop.offsetWidth - 8)}px`;\n    pop.style.top = `${window.scrollY + Math.max(8, y)}px`;\n  };\n  const make = (tag, props) => Object.assign(document.createElement(tag), props);\n  const open = (el) => {\n    const key = keyMap().get(el);\n    const mark = marks.get(key);\n    const draft = drafts.get(key);\n    let kind = draft?.kind ?? mark?.kind ?? '';\n    opener = document.activeElement;\n    anchor = el;\n\n    const note = make('textarea', { rows: 2, placeholder: ui.hint, value: draft?.note ?? mark?.note ?? '' });\n    note.setAttribute('aria-label', ui.hint);\n    const keep = make('button', { type: 'button', className: 'am-btn', textContent: ui.save, disabled: !kind });\n    const need = make('span', { className: 'am-remark-need', textContent: ui.need, hidden: Boolean(kind) });\n    keepDraft = () => {\n      if (kind || note.value.trim()) drafts.set(key, { kind, note: note.value });\n      else drafts.delete(key);\n      showClear();\n    };\n    const done = () => { drafts.delete(key); keepDraft = null; showClear(); };\n    keep.addEventListener('click', () => {\n      done();\n      const saved = { key, kind, note: note.value.trim() };\n      marks.set(key, saved);\n      save();\n      paint(el, saved);\n      close(true);\n    });\n    const actions = make('div', { className: 'am-remark-actions' });\n    actions.append(keep);\n    if (mark) {\n      const drop = make('button', { type: 'button', className: 'am-btn', textContent: ui.remove });\n      drop.addEventListener('click', () => {\n        done();\n        marks.delete(key);\n        save();\n        unpaint(el);\n        close(true);\n      });\n      actions.append(drop);\n    }\n    const choose = (k) => {\n      kind = k;\n      for (const other of kindBtns) other.setAttribute('aria-pressed', String(other.dataset.kind === k));\n      keep.disabled = false;\n      need.hidden = true;\n    };\n    const kindBtns = KINDS.map((k, i) => {\n      const kb = make('button', { type: 'button', className: 'am-remark-kind', textContent: ui.kinds[k] });\n      kb.dataset.kind = k;\n      kb.dataset.n = i + 1;\n      kb.setAttribute('aria-pressed', String(k === kind));\n      kb.addEventListener('click', () => choose(k));\n      return kb;\n    });\n    // Ctrl / Cmd + Enter presses Save (nothing while Save waits for a kind). A digit types into the note, so it picks a kind\n    // only while the focus is outside the note.\n    pop.onkeydown = (e) => {\n      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) {\n        e.preventDefault();\n        if (!keep.disabled) keep.click();\n        return;\n      }\n      if (e.target === note || e.ctrlKey || e.metaKey || e.altKey || !/^[1-4]$/.test(e.key)) return;\n      e.preventDefault();\n      choose(KINDS[Number(e.key) - 1]);\n      note.focus();\n    };\n    actions.append(need);\n    pop.replaceChildren(make('div', { className: 'am-remark-kinds' }), note, actions);\n    pop.firstChild.append(...kindBtns);\n    pop.hidden = false;\n    place();\n    (kindBtns.find((b) => b.dataset.kind === kind) ?? kindBtns[0]).focus({ preventScroll: true });\n  };\n\n  // Picking works only while remark mode is on. A click on a marked block edits its mark, on a plain block starts one.\n  // The block under the pointer gets an outline: the same blockAt decides what is outlined and what a click picks.\n  let hover = null;\n  const track = (e) => {\n    const el = e.type === 'mouseout' && e.relatedTarget === null ? null : blockAt(e.target);\n    if (el === hover) return;\n    hover?.classList.remove('am-remark-hover');\n    hover = el;\n    hover?.classList.add('am-remark-hover');\n  };\n  const pick = (e) => {\n    const el = blockAt(e.target);\n    if (el) open(el);\n  };\n  // The keyboard picks too: while the mode is on, every block takes focus with Tab, and Enter or Space opens its popover. A block\n  // that already had a tabindex keeps it; only the ones the mode added lose it again.\n  const pickKey = (e) => {\n    if ((e.key !== 'Enter' && e.key !== ' ') || e.ctrlKey || e.metaKey || e.altKey || !e.target.hasAttribute?.('data-am-pick')) return;\n    e.preventDefault();\n    open(e.target);\n  };\n  const focusable = (on) => {\n    if (!on && !keys) return; // the mode starts off: a page nobody marked builds no block keys\n    for (const el of keyMap().keys()) {\n      if (on && !el.hasAttribute('tabindex')) {\n        el.tabIndex = 0;\n        el.setAttribute('data-am-pick', '');\n      } else if (!on && el.hasAttribute('data-am-pick')) {\n        el.removeAttribute('tabindex');\n        el.removeAttribute('data-am-pick');\n      }\n    }\n  };\n  const setMode = (on) => {\n    btn.classList.toggle('is-on', on);\n    btn.setAttribute('aria-pressed', String(on));\n    const toggle = on ? 'addEventListener' : 'removeEventListener';\n    document.body[toggle]('click', pick);\n    document.body[toggle]('mouseover', track);\n    document.body[toggle]('mouseout', track);\n    document.body[toggle]('keydown', pickKey);\n    focusable(on);\n    if (!on) {\n      track({ type: 'mouseout', relatedTarget: null });\n      close(false);\n    }\n  };\n  btn.addEventListener('click', () => setMode(btn.getAttribute('aria-pressed') !== 'true'));\n  document.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape') close(true);\n  });\n  // A click outside the popover closes it; the same click may then start another mark.\n  document.addEventListener('click', (e) => {\n    if (!pop.hidden && !pop.contains(e.target)) close(false);\n  }, true);\n  setMode(false);\n\n  // What the Reply button reads: the marked blocks that are on the page, in page order.\n  window.__amRemarkData = () => {\n    if (!marks.size) return [];\n    const live = [];\n    for (const [el, key] of keyMap()) {\n      const mark = marks.get(key);\n      if (mark) live.push({ panel: panelOf(el), quote: quote(blockText(el)), kind: mark.kind, note: mark.note });\n    }\n    return live;\n  };\n})();\n})();\n(() => {\n// Pure planner for justified (\"photo wall\") rows on sheet pages. No DOM access.\n//\n// This file must stay inlinable into the page script: top-level declarations only, no imports, and the exports are\n// `planLayout` and the constants the DOM adapter shares (STEP, MAX_SCALE, MIN_SCALE). The page build strips the `export ` keyword,\n// and test/layout-plan.test.js checks that this still works.\n//\n// planLayout({ width, gap, cols, panels }) -> { rows: [{ columns: [{ panels: [index, ...], width }], height }] }\n//\n// Input (all lengths in px):\n//   width   container width\n//   gap     space between columns, and between two panels stacked in one column\n//   cols    most columns in one row (the planner never uses more than MAX_COLUMNS, but spans stay shares of `cols`)\n//   panels  one entry per panel, in reading order:\n//     samples   [{ w, h }] panel height at sampled widths, ascending by w (heights between samples are interpolated)\n//     minWidth  narrowest feasible width (clamped to `width`)\n//     maxWidth  widest useful width; beyond it the panel only gains empty space (default: no limit)\n//     natural   natural diagram width for a diagram-only panel (default: none)\n//     pad       panel width not used by the diagram (padding and border; default 0)\n//     span      the author's width hint in grid columns (default 1); span >= cols keeps the panel alone in its row\n//\n// Output: { rows, maxScale }. Rows are in reading order; a row is a list of columns (at most `cols`); a column holds one panel or two\n// consecutive panels, stacked. For integer inputs the column widths plus the gaps between them equal `width`.\n// Rows are chosen by dynamic programming over break points; widths by a search in STEP px steps. Cost per row:\n//   H = tallest column; waste = sum((H - columnHeight) * columnWidth) + sum over diagrams wider than maxWidth of (w - maxWidth) * h\n//   dev = sum(((w - preferred) / oneColumn)^2) + SCALE_WEIGHT * sum over diagrams of (ln(scale) / ln(MAX_SCALE))^2\n//   cost = waste / 1000 + PREF_WEIGHT * dev * H\n// Scale band: diagrams on one page stay at similar sizes. With the result's `maxScale` as the diagram size limit, a diagram is\n// shown at scale min(maxScale, (width - pad) / natural). The planner tries a few bands [lo, lo * BAND_RATIO] (lo in BAND_LOS) and\n// keeps the cheapest plan in which no diagram is narrower than scale lo and none is shown above the band's top, so the largest and\n// smallest diagram scale on the page differ by at most BAND_RATIO. A panel wider than its diagram's top size keeps the diagram at\n// that size, and the page script must set the diagram's max-width to natural * maxScale. The band starts no higher than the\n// largest scale the page allows the least roomy diagram, so one wide diagram lowers the band for the others.\n// If no band is feasible the plan is made without a band (maxScale = MAX_SCALE); if no plan fits (or the input is unusable) the\n// result is a single column: one panel per row at the full width.\n\nconst STEP = 10;\nconst MAX_SCALE = 1.25;\nconst MIN_SCALE = 0.75; // the narrowest a diagram is shown, as a share of its natural width\nconst MAX_COLUMNS = 6; // rows with more columns are unreadable, and the search grows steeply with the column count\nconst BAND_RATIO = 1.25; // the largest and smallest diagram scale on a page differ by at most this\nconst BAND_LOS = [MIN_SCALE, 0.85, 0.95, 1]; // lower ends tried for the band; lo * BAND_RATIO is the upper end (1.25 means no upper limit)\nconst SCALE_WEIGHT = 3;\nconst PREF_WEIGHT = 0.15;\n\nfunction heightAt(samples, w) {\n  const i = samples.findIndex((s) => s.w >= w);\n  if (i === -1) return samples[samples.length - 1].h;\n  if (i === 0) return samples[0].h;\n  const a = samples[i - 1];\n  const b = samples[i];\n  return a.h + ((b.h - a.h) * (w - a.w)) / (b.w - a.w);\n}\n\n// Every way to split `len` consecutive panels into columns of 1 or 2 panels, as lists of column sizes.\nfunction splits(len) {\n  if (len === 0) return [[]];\n  return [1, 2].filter((k) => k <= len).flatMap((k) => splits(len - k).map((rest) => [k, ...rest]));\n}\n\nfunction singleColumn(width, panels) {\n  return { rows: panels.map((_, i) => ({ columns: [{ panels: [i], width }], height: 0 })) };\n}\n\nfunction planLayout({ width, gap = 0, cols = 3, panels }) {\n  const usable = Number.isFinite(width) && width > 0 && panels.every((p) => Array.isArray(p.samples) && p.samples.length > 0);\n  if (!usable) return singleColumn(width, panels);\n\n  // `cols` stays the unit of the author's spans; no row gets more than MAX_COLUMNS columns however large `cols` is.\n  const maxColumns = Math.min(cols, MAX_COLUMNS);\n  const oneColumn = Math.max(1, (width - gap * (cols - 1)) / cols);\n  // Per-panel limits. With a band [lo, lo * BAND_RATIO], a diagram is no narrower than scale lo and shown at most at the top of the\n  // band: a wider panel keeps it at that size and gains empty space, which the cost counts as waste.\n  const prepare = (lo) => panels.map((p) => {\n    const pad = p.pad ?? 0;\n    const diagram = lo > 0 && p.natural > 0;\n    const scaleCap = diagram ? Math.min(MAX_SCALE, lo * BAND_RATIO) : MAX_SCALE;\n    return {\n      ...p,\n      minWidth: Math.min(width, Math.max(Math.ceil(p.minWidth || 0), diagram ? Math.ceil(p.natural * lo + pad) : 0)),\n      maxWidth: Math.min(p.maxWidth ?? Infinity, diagram ? p.natural * scaleCap + pad : Infinity),\n      scaleCap,\n      pad,\n      preferred: Math.min(width, (p.span ?? 1) * oneColumn + ((p.span ?? 1) - 1) * gap),\n      alone: (p.span ?? 1) >= cols,\n    };\n  });\n  let info = prepare(0);\n  // Beyond its maxWidth a panel only gains empty space, so its height stops changing there (matters when a band lowers maxWidth).\n  const heightOf = (p, w) => heightAt(p.samples, Math.min(w, p.maxWidth));\n  const columnHeight = (col, w) => col.reduce((h, k) => h + heightOf(info[k], w), 0) + gap * (col.length - 1);\n\n  function bestColumns(columns) {\n    const avail = width - gap * (columns.length - 1);\n    const mins = columns.map((c) => Math.max(...c.map((k) => info[k].minWidth)));\n    const minsFrom = mins.map((_, n) => mins.slice(n).reduce((s, w) => s + w, 0));\n    if (minsFrom[0] > avail) return null;\n    let best = null;\n    const evaluate = (ws) => {\n      const hs = ws.map((w, n) => columnHeight(columns[n], w));\n      const H = Math.max(...hs);\n      let waste = 0;\n      let dev = 0;\n      ws.forEach((w, n) => {\n        waste += (H - hs[n]) * w;\n        for (const k of columns[n]) {\n          const p = info[k];\n          if (w > p.maxWidth) waste += (w - p.maxWidth) * heightOf(p, w);\n          dev += ((w - p.preferred) / oneColumn) ** 2;\n          if (p.natural > 0) {\n            const scale = Math.min(p.scaleCap, Math.max(w - p.pad, 1) / p.natural);\n            dev += SCALE_WEIGHT * (Math.log(scale) / Math.log(MAX_SCALE)) ** 2;\n          }\n        }\n      });\n      const cost = waste / 1000 + PREF_WEIGHT * dev * H;\n      if (!best || cost < best.cost) best = { cost, ws, height: H, columns };\n    };\n    const choose = (n, used, ws) => {\n      if (n === columns.length - 1) {\n        const w = avail - used;\n        if (w >= mins[n]) evaluate([...ws, w]);\n        return;\n      }\n      for (let w = mins[n]; used + w + minsFrom[n + 1] <= avail; w += STEP) choose(n + 1, used + w, [...ws, w]);\n    };\n    choose(0, 0, []);\n    return best;\n  }\n\n  // Best columns for one row of panels i..j.\n  function bestRow(i, j) {\n    if (j > i && info.slice(i, j + 1).some((p) => p.alone)) return null;\n    let best = null;\n    for (const split of splits(j - i + 1)) {\n      if (split.length > maxColumns) continue;\n      let next = i;\n      const columns = split.map((size) => Array.from({ length: size }, () => next++));\n      const r = bestColumns(columns);\n      if (r && (!best || r.cost < best.cost)) best = r;\n    }\n    return best;\n  }\n\n  // Row breaks in reading order, for the band set up in `info`. A row holds at most 2 * maxColumns panels. Null if nothing fits.\n  function solve() {\n    const n = panels.length;\n    const total = Array(n + 1).fill(Infinity);\n    const from = Array(n + 1).fill(-1);\n    const chosen = Array(n + 1).fill(null);\n    total[0] = 0;\n    for (let j = 1; j <= n; j++) {\n      for (let i = Math.max(0, j - 2 * maxColumns); i < j; i++) {\n        if (total[i] === Infinity) continue;\n        const r = bestRow(i, j - 1);\n        if (r && total[i] + r.cost < total[j]) {\n          total[j] = total[i] + r.cost;\n          from[j] = i;\n          chosen[j] = r;\n        }\n      }\n    }\n    if (total[n] === Infinity) return null;\n    const rows = [];\n    for (let j = n; j > 0; j = from[j]) {\n      const r = chosen[j];\n      rows.unshift({ columns: r.columns.map((panelsInColumn, c) => ({ panels: panelsInColumn, width: r.ws[c] })), height: r.height });\n    }\n    return { rows, cost: total[n] };\n  }\n\n  let best = null;\n  const diagrams = panels.filter((p) => p.natural > 0);\n  if (diagrams.length > 1) {\n    // No diagram can be shown larger than the page allows, so the band cannot start above the smallest of those limits.\n    const reach = Math.min(...diagrams.map((p) => Math.min(MAX_SCALE, Math.max(width - (p.pad ?? 0), 1) / p.natural)));\n    for (const lo of new Set([...BAND_LOS.filter((x) => x < reach), reach])) {\n      info = prepare(lo);\n      const r = solve();\n      if (r && (!best || r.cost < best.cost)) best = { ...r, maxScale: Math.min(MAX_SCALE, lo * BAND_RATIO) };\n    }\n    info = prepare(0);\n  }\n  best ??= solve();\n  return best ? { rows: best.rows, maxScale: best.maxScale ?? MAX_SCALE } : singleColumn(width, panels);\n}\n\n// DOM adapter for the sheet's justified (\"photo wall\") layout. Not a module: compose.js puts it after src/runtime/layout-plan.js\n// (which defines planLayout and the shared STEP, MAX_SCALE, MIN_SCALE) inside one function scope of the page script.\n//\n// It measures every panel at sampled widths, asks planLayout for rows and column widths, and applies them with flexbox.\n// The rendered HTML keeps the plain CSS grid: with JavaScript off, at the single-column breakpoint, or while printing, the grid is what\n// shows (the planned widths belong to the screen width, so print never gets a mix of the two); after printing the layout comes back.\n\n// A diagram is never drawn under MIN_SCALE of its natural width, the floor the planner keeps: below it the text is too small to read,\n// so its figure scrolls sideways instead. This covers what the planner does not size: the plain grid, a phone, a one-panel page and a\n// panel that holds more than the diagram. The svg width follows the reader's text size (page.js), so the floor follows am-scale;\n// restore() puts it back after resetting the inline styles. Printing drops it (base.css).\nconst floorDiagrams = () => {\n  for (const svg of document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas) > svg')) {\n    const width = Number(svg.getAttribute('width'));\n    if (width > 0) svg.style.minWidth = `${Math.floor(width * MIN_SCALE)}px`;\n  }\n};\nfloorDiagrams();\naddEventListener('am-scale', floorDiagrams);\n\nconst grid = document.querySelector('.am-grid');\nconst panels = grid ? [...grid.children].filter((el) => el.classList.contains('am-panel')) : [];\n\nif (panels.length > 1) {\n  const SINGLE_COLUMN = '(max-width: 760px)'; // the single-column breakpoint in src/themes/base.css\n  const TWO_COLUMNS = '(max-width: 1100px)'; // below this the CSS grid has two columns\n  const SAMPLE_STEP = 20; // width sampling step, px; the planner interpolates between samples\n  // The width floors are text sizes (px at scale 1). They take the page scale on every pass, so a runtime change of --am-scale re-plans.\n  const TEXT_MIN = 260; // text keeps at least about 16 CJK characters per line\n  const TABLE_COL_MIN = 96; // per table column, px\n  const TABLE_COL_COMFORT = 220; // a table column this wide reads three or four words per line\n  const TABLE_WORD_MAX = 160; // a longer word (an id, a path) counts as this wide and may break inside its cell when room is short\n  const KV_COL_MIN = 120; // per key-value column, px: a value of two short words stays on one line\n  const DIAGRAM_MIN = 160;\n  const RESIZE_DELAY = 150;\n  const pageScale = () => {\n    const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--am-scale'));\n    return Number.isFinite(scale) && scale > 0 ? scale : 1;\n  };\n  const OVERFLOWING = '.am-table-wrap, .am-diagram, .am-annot-scroll, pre';\n\n  // The first-row cells of each table carry the column widths fitTables() sets, so restore() resets them too.\n  const tables = [...grid.querySelectorAll('.am-table-wrap > table')];\n  const headCells = (table) => [...(table.rows[0]?.cells ?? [])];\n  const original = new Map([grid, ...panels, ...grid.querySelectorAll('.am-diagram > svg'), ...tables.flatMap(headCells)].map((el) => [el, el.getAttribute('style')]));\n  const restoreStyle = (el) => (original.get(el) === null ? el.removeAttribute('style') : el.setAttribute('style', original.get(el)));\n\n  // Back to the plain grid markup and styles.\n  const restore = () => {\n    for (const box of grid.querySelectorAll(':scope > .am-col')) box.replaceWith(...box.children);\n    for (const el of original.keys()) restoreStyle(el);\n    for (const table of tables) table.classList.remove('am-table-fit');\n    floorDiagrams();\n  };\n\n  // The author's width hint, rendered as data-span only when the author wrote one. The inline grid-column is the no-JavaScript fallback\n  // and may hold spans the server added, so it is never read here.\n  const spanHint = (el) => Number(el.dataset.span) || 1;\n  const diagramOnly = (el) => {\n    const body = el.querySelector(':scope > .am-panel-body');\n    return body && body.children.length === 1 ? body.querySelector(':scope > .am-diagram > svg') : null;\n  };\n  const naturalWidth = (svg) => Number(svg.getAttribute('width')) || 0;\n\n  // The width each column of a table reads well at: its natural width, but no wider than TABLE_COL_COMFORT unless its longest word\n  // needs more. Below it the cells wrap one word per line, so a panel with a table is not planned narrower than the sum, and\n  // fitTables() keeps each column at its share (the browser would otherwise give the room to the longest column).\n  // A column's floor is its longest word, but no more than TABLE_WORD_MAX: a long id would otherwise hold its column at full width and\n  // leave a prose column one word per line. fitTables() lets such a word break (am-table-fit) when the table is short of room.\n  const columnWidths = new Map();\n  function comfortableWidth(table, scale) {\n    const saved = table.getAttribute('style');\n    const columns = (width) => {\n      table.style.width = width;\n      return headCells(table).map((cell) => cell.getBoundingClientRect().width);\n    };\n    const most = columns('max-content');\n    const unbroken = columns('min-content');\n    const least = unbroken.map((w) => Math.min(w, TABLE_WORD_MAX * scale));\n    if (saved === null) table.removeAttribute('style');\n    else table.setAttribute('style', saved);\n    // A max-content column comes out a fraction under its text in Chrome, enough to wrap the last word, so it gets one pixel more.\n    const want = most.map((w, i) => Math.min(Math.ceil(w) + 1, Math.max(least[i], TABLE_COL_COMFORT * scale)));\n    // unbroken: each column's longest word. A column the browser lays out is at least that wide, whatever its min-width, so\n    // fitTables() turns am-table-fit on when the columns would not fit at those widths, even if the capped widths do.\n    columnWidths.set(table, { least, want, unbroken });\n    return want.reduce((sum, w) => sum + w, 0);\n  }\n\n  // After the layout: each column gets at least its comfortable width, scaled down toward its longest word when the panel came out\n  // narrower than planned (a page narrower than the table), so a table scrolls sideways only when even its longest words do not fit.\n  function fitTables() {\n    for (const [table, { least, want, unbroken }] of columnWidths) {\n      // Each width is rounded up to a whole pixel (a column a fraction too narrow wraps its last word), so keep a pixel per column spare.\n      const room = table.parentElement.clientWidth - want.length;\n      const low = least.reduce((s, w) => s + w, 0);\n      const high = want.reduce((s, w) => s + w, 0);\n      const k = high > room ? Math.max(0, (room - low) / (high - low || 1)) : 1;\n      const widths = want.map((w, i) => Math.ceil(least[i] + (w - least[i]) * k));\n      headCells(table).forEach((cell, i) => { cell.style.minWidth = `${widths[i]}px`; });\n      // Without am-table-fit a column holds its longest word, so a long id can widen the table past the room the widths left.\n      const whole = widths.reduce((s, w, i) => s + Math.max(w, unbroken[i]), 0);\n      table.classList.toggle('am-table-fit', high > room || whole > room);\n    }\n  }\n\n  // Height (and, for panels with tables or code, the narrowest width without sideways scrolling) at sampled widths.\n  // Only one panel is displayed while it is measured, so each width change lays out that panel alone.\n  function measure(width) {\n    const scale = pageScale();\n    grid.style.display = 'block';\n    for (const el of panels) {\n      el.style.display = 'none';\n      el.style.boxSizing = 'border-box';\n      for (const svg of el.querySelectorAll('.am-diagram > svg')) {\n        svg.style.width = '100%';\n        svg.style.maxWidth = `${naturalWidth(svg) * MAX_SCALE}px`;\n      }\n    }\n    const info = panels.map((el) => {\n      const svg = diagramOnly(el);\n      const svgs = [...el.querySelectorAll('.am-diagram > svg')];\n      const scrollers = el.querySelectorAll(OVERFLOWING);\n      const tableCols = Math.max(0, ...[...el.querySelectorAll('table tr:first-child')].map((tr) => tr.children.length));\n      el.style.display = '';\n      el.style.width = `${width}px`;\n      const pad = svg ? el.offsetWidth - svg.parentElement.clientWidth : 0;\n      const natural = svg ? naturalWidth(svg) : 0;\n      const shrunk = Math.max(0, ...svgs.map((s) => naturalWidth(s) * MIN_SCALE)) + (svg ? pad : 34);\n      const tableFloors = [...el.querySelectorAll('.am-table-wrap > table')].map((t) => comfortableWidth(t, scale) + el.offsetWidth - t.parentElement.clientWidth);\n      // A key-value grid gets the same care: the room a table gains must not squeeze a neighbouring grid to one word per line.\n      const kvs = [...el.querySelectorAll('.am-kv')].map((kv) => (Number(kv.style.getPropertyValue('--kv-cols')) || 1) * KV_COL_MIN * scale + el.offsetWidth - kv.clientWidth);\n      const floor = svg ? Math.max(DIAGRAM_MIN * scale, natural * MIN_SCALE + pad) : Math.max(TEXT_MIN * scale, shrunk, tableCols * TABLE_COL_MIN * scale + 34, ...tableFloors, ...kvs);\n      const from = Math.min(width, Math.floor(floor / STEP) * STEP);\n      const samples = [];\n      let fits = null;\n      for (let w = from; ; w += SAMPLE_STEP) {\n        w = Math.min(w, width);\n        el.style.width = `${w}px`;\n        if (fits === null && !svg && scrollers.length && ![...scrollers].some((s) => s.scrollWidth > s.clientWidth + 1)) fits = w;\n        samples.push({ w, h: el.offsetHeight });\n        if (w === width) break;\n      }\n      el.style.display = 'none';\n      return {\n        samples,\n        minWidth: svg ? floor : Math.max(floor, fits ?? (scrollers.length ? width : 0)),\n        maxWidth: svg ? natural * MAX_SCALE + pad : Infinity,\n        natural,\n        pad,\n        span: spanHint(el),\n      };\n    });\n    for (const el of panels) {\n      el.style.display = '';\n      el.style.width = '';\n    }\n    return info;\n  }\n\n  // Each column gets a fixed width. A row adds up to the full width, so flex-wrap breaks rows by itself.\n  // Stacked panels go into a column wrapper whose last panel absorbs the extra height.\n  function apply(plan, gap) {\n    grid.style.display = 'flex';\n    grid.style.flexWrap = 'wrap';\n    grid.style.alignItems = 'stretch';\n    grid.style.gap = `${gap}px`;\n    for (const el of panels) {\n      el.style.gridColumn = '';\n      el.style.gridRow = '';\n      el.style.flex = '0 0 auto';\n    }\n    for (const row of plan.rows) {\n      for (const col of row.columns) {\n        const width = `${col.width}px`;\n        if (col.panels.length === 1) {\n          panels[col.panels[0]].style.width = width;\n          continue;\n        }\n        const box = document.createElement('div');\n        box.className = 'am-col';\n        box.style.cssText = `width:${width};flex:0 0 auto;display:flex;flex-direction:column;gap:${gap}px`;\n        panels[col.panels[0]].before(box);\n        for (const k of col.panels) {\n          panels[k].style.width = '';\n          box.append(panels[k]);\n        }\n        panels[col.panels[col.panels.length - 1]].style.flex = '1 1 auto';\n      }\n    }\n  }\n\n  // Diagram-only panels show their diagram at most at the top of the page's scale band; a wider panel gains empty space instead.\n  function capDiagrams(maxScale) {\n    for (const el of panels) {\n      const svg = diagramOnly(el);\n      if (svg) svg.style.maxWidth = `${naturalWidth(svg) * maxScale}px`;\n    }\n  }\n\n  const containerWidth = () => Math.floor(grid.getBoundingClientRect().width);\n\n  function justify() {\n    if (printing || printQuery.matches) return;\n    try {\n      // A vertical scrollbar can appear or vanish once the rows change height; plan again if the width moved.\n      // A later pass plans for the width the previous layout left, not the grid's: restoring the grid first would bring back the\n      // grid's scrollbar, so a page whose grid scrolls and whose rows do not (or the reverse) would never settle.\n      let planned = -1;\n      let laidOut = NaN;\n      for (let pass = 0; pass < 3 && planned !== laidOut; pass++) {\n        restore();\n        if (matchMedia(SINGLE_COLUMN).matches) return;\n        planned = pass === 0 ? containerWidth() : laidOut;\n        const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;\n        const cols = Math.max(1, Number(getComputedStyle(grid).getPropertyValue('--cols')) || 3);\n        const plan = planLayout({ width: planned, gap, cols: matchMedia(TWO_COLUMNS).matches ? Math.min(cols, 2) : cols, panels: measure(planned) });\n        apply(plan, gap);\n        capDiagrams(plan.maxScale);\n        fitTables();\n        laidOut = containerWidth();\n      }\n      // The width never settled: columns planned for another width would overflow or leave gaps, so show the plain grid.\n      if (planned !== laidOut) restore();\n    } catch {\n      restore();\n    }\n  }\n\n  // Printing: back to the plain grid (spans and all), and the layout again afterwards. Browsers disagree on which of the\n  // `beforeprint` event and the print media query change fires first, or at all, so listen to both; both are idempotent.\n  // While `printing` is set (beforeprint to afterprint) justify() does nothing, so a late resize cannot bring flex widths into the print layout.\n  let printing = false;\n  const printQuery = matchMedia('print');\n  let timer = 0;\n  const later = () => {\n    clearTimeout(timer);\n    timer = setTimeout(justify, RESIZE_DELAY);\n  };\n  const toPrint = () => {\n    clearTimeout(timer);\n    restore();\n  };\n  justify();\n  addEventListener('resize', later);\n  // A reader's text size changes every panel's text widths and heights, so the sheet is planned again like a resize.\n  addEventListener('am-scale', later);\n  addEventListener('beforeprint', () => {\n    printing = true;\n    toPrint();\n  });\n  addEventListener('afterprint', () => {\n    printing = false;\n    later();\n  });\n  printQuery.addEventListener('change', (e) => (e.matches ? toPrint() : later()));\n  // Late changes to panel heights: web fonts arriving, and images inside the grid finishing their load (load does not bubble, so capture it).\n  document.fonts?.ready.then(later);\n  grid.addEventListener('load', later, true);\n  // Switching theme changes paddings and fonts, hence panel heights.\n  document.querySelector('[data-am=\"theme\"]')?.addEventListener('click', later);\n}\n})();\n// The outline rail of a doc page (src/templates/doc.js): the markup already works without a script, <details> opens the list and the\n// links jump. This adds the hover dwell, the open direction, the keys, the tap outside and the marking of the current section.\n(() => {\n  const nav = document.querySelector('nav.am-toc');\n  const box = nav && nav.querySelector('details.am-outline');\n  if (!box) return;\n  const sum = box.querySelector('summary');\n  const links = Array.from(box.querySelectorAll('.am-outline-list a'));\n  const ticks = Array.from(box.querySelectorAll('.am-tick'));\n  const LIST_W = 240; // keep in step with .am-outline-list in src/themes/base.css\n  const EDGE = 10; // the 6px gap to the rail plus a margin to the viewport edge\n  let current = '';\n  let byHover = false;\n  let dwell = 0;\n  let leave = 0;\n\n  // Open away from the body when the room outside the rail fits the list; otherwise over the body. Never past the viewport.\n  const place = () => {\n    const r = sum.getBoundingClientRect();\n    const right = r.left + r.width / 2 > innerWidth / 2;\n    const room = right ? innerWidth - r.right : r.left;\n    nav.dataset.flow = room >= Math.min(LIST_W, innerWidth - 48) + EDGE ? 'out' : 'in';\n  };\n  const setOpen = (open) => {\n    if (open) place();\n    box.open = open;\n    if (!open) byHover = false;\n  };\n  const peek = (tick) => ticks.forEach((t) => t.classList.toggle('is-peek', t === tick));\n  const currentLink = () => links.find((a) => a.getAttribute('aria-current') === 'true') || links[0];\n\n  const mark = (id) => {\n    current = id;\n    ticks.forEach((t) => t.classList.toggle('is-current', t.dataset.id === id));\n    links.forEach((a) => {\n      if (a.getAttribute('href') === `#panel-${id}`) a.setAttribute('aria-current', 'true');\n      else a.removeAttribute('aria-current');\n    });\n  };\n  const sections = ticks.map((t) => document.getElementById(`panel-${t.dataset.id}`)).filter(Boolean);\n  if (sections.length) mark(sections[0].id.slice(6));\n  if (sections.length && 'IntersectionObserver' in window) {\n    // A thin band a third of the way down the viewport: the section across it is the one being read.\n    const seen = new Set();\n    const io = new IntersectionObserver((entries) => {\n      entries.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)));\n      const hit = sections.filter((s) => seen.has(s)).pop();\n      if (hit && hit.id.slice(6) !== current) mark(hit.id.slice(6));\n    }, { rootMargin: '-30% 0px -65% 0px' });\n    sections.forEach((s) => io.observe(s));\n  }\n\n  place();\n  addEventListener('resize', place);\n\n  // Mouse: dwelling on the rail opens the list, leaving it closes a list opened that way. A tap or click opens it for good.\n  box.addEventListener('pointerenter', (e) => {\n    clearTimeout(leave);\n    if (e.pointerType !== 'mouse' || box.open) return;\n    dwell = setTimeout(() => { setOpen(true); byHover = true; }, 300);\n  });\n  box.addEventListener('pointerleave', () => {\n    clearTimeout(dwell);\n    // A link the keyboard moved into keeps the list open; focusout closes it once the focus leaves the nav.\n    if (byHover) leave = setTimeout(() => { if (!nav.contains(document.activeElement)) setOpen(false); }, 250);\n  });\n  sum.addEventListener('click', (e) => {\n    clearTimeout(dwell);\n    if (box.open && byHover) { e.preventDefault(); byHover = false; return; }\n    place();\n  });\n  box.addEventListener('toggle', () => { if (box.open) peek(null); });\n\n  // Keyboard: the summary opens with Enter or Space (native); arrows move through the links; Esc closes and returns to the rail.\n  sum.addEventListener('focus', () => {\n    if (sum.matches(':focus-visible')) peek(ticks.find((t) => t.dataset.id === current));\n  });\n  sum.addEventListener('blur', () => peek(null));\n  nav.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape' && box.open) {\n      e.preventDefault();\n      setOpen(false);\n      sum.focus();\n      return;\n    }\n    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;\n    const at = links.indexOf(document.activeElement);\n    if (at < 0 && e.target !== sum) return;\n    e.preventDefault();\n    if (!box.open) setOpen(true);\n    let next;\n    if (e.key === 'Home') next = links[0];\n    else if (e.key === 'End') next = links[links.length - 1];\n    else if (at < 0) next = e.key === 'ArrowDown' ? currentLink() : links[links.length - 1];\n    else next = links[Math.min(links.length - 1, Math.max(0, at + (e.key === 'ArrowDown' ? 1 : -1)))];\n    next.focus();\n  });\n  nav.addEventListener('focusout', (e) => {\n    if (box.open && e.relatedTarget && !nav.contains(e.relatedTarget)) setOpen(false);\n  });\n\n  // Choosing a section or tapping outside closes the list.\n  links.forEach((a) => a.addEventListener('click', () => setOpen(false)));\n  document.addEventListener('pointerdown', (e) => { if (box.open && !nav.contains(e.target)) setOpen(false); });\n  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.open && !nav.contains(e.target)) setOpen(false); });\n})();\n\n// Copy the page as a PNG image onto the clipboard. The button shows on every page with a sheet or doc, and this script explains why\n// it cannot copy where the browser lacks the pieces: no canvas rasterizer, a preview frame whose feature policy forbids clipboard-write,\n// or no async Clipboard API / secure context. Firefox can rasterize the page as of version 160, so the button is enabled there and in\n// Chromium; Safari and unknown browsers keep a usable button but carry a note that the effect is not guaranteed. A failed copy shows\n// the failure and never falls back to downloading the PNG.\n//\n// Pipeline: clone the page body \u2192 inline every computed style (CSS variables are resolved there, so a clone keeps theme colours and\n// sizes) and the ::before / ::after decorations \u2192 wrap it in an SVG foreignObject \u2192 draw that image on a canvas \u2192 toBlob('image/png')\n// \u2192 navigator.clipboard.write(new ClipboardItem(...)), passing the blob as a promise so the write keeps the user's click activation.\n(() => {\n  const XHTML = 'http://www.w3.org/1999/xhtml';\n  const SVG = 'http://www.w3.org/2000/svg';\n  const MAX_DIM = 16384;        // Chrome refuses a canvas wider or taller than this\n  const MAX_AREA = 268435456;   // and one with more pixels than this (16384 * 16384)\n\n  const btn = document.querySelector('[data-am=\"copy-image\"]');\n  if (!btn) return;\n  const main = document.querySelector('main.am-sheet, main.am-doc');\n  if (!main) return;\n\n  const canRasterize = typeof XMLSerializer !== 'undefined' && typeof document.createElement('canvas').getContext === 'function';\n  const canCopy = window.isSecureContext && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard?.write === 'function';\n  // Chromium (including an embedded Chromium without navigator.userAgentData, whose UA still names Chrome/) and Firefox can rasterize\n  // the page. Safari and unknown browsers are not rejected outright: their button stays usable but carries a note that the effect is\n  // not guaranteed.\n  const brands = navigator.userAgentData?.brands;\n  const chromium = brands ? brands.some((b) => /Chromium/.test(b.brand)) : /\\bChrome\\//.test(navigator.userAgent);\n  const gecko = /\\bFirefox\\//.test(navigator.userAgent);\n  btn.hidden = false;\n\n  const idle = btn.textContent;\n  // When the button can copy, its aria-label stays \"Copy as image\", so a screen reader hears each result through a hidden live region\n  // beside it. aria-live, not role=\"status\": the live-update notice owns role=\"status\" (src/runtime/page.js), and the two must stay apart.\n  const status = document.createElement('span');\n  status.setAttribute('aria-live', 'polite');\n  status.dataset.am = 'copy-image-status';\n  status.className = 'am-visually-hidden';\n  btn.after(status);\n  const say = (text, restore) => {\n    btn.textContent = text;\n    status.textContent = text;\n    clearTimeout(say.timer);\n    if (restore) say.timer = setTimeout(() => { btn.textContent = idle; }, 1800);\n  };\n\n  // A disabled button says why, in the order of the conditions the page can act on: no rasterizer, a preview frame's feature policy\n  // forbidding clipboard-write, then a missing async Clipboard API or secure context. The reason fills the button, its title, its\n  // accessible name, and the hidden live region; no click handler is registered.\n  let unavailable = null;\n  if (!canRasterize) unavailable = btn.dataset.unavailableBrowser;\n  else if (document.featurePolicy && document.featurePolicy.allowsFeature('clipboard-write') === false) unavailable = btn.dataset.unavailablePolicy;\n  else if (!canCopy) unavailable = btn.dataset.unavailableClipboard;\n  if (unavailable) {\n    btn.disabled = true;\n    btn.setAttribute('aria-disabled', 'true');\n    btn.textContent = unavailable;\n    btn.title = unavailable;\n    btn.setAttribute('aria-label', unavailable);\n    status.textContent = unavailable;\n    return;\n  }\n\n  // Safari and unknown browsers can draw the page often enough to keep the button, but the result is not guaranteed: add the note to\n  // the title and the accessible name after what the button does, and keep the original button text.\n  if (!chromium && !gecko) {\n    const labelled = `${idle}. ${btn.dataset.unverifiedEffect}`;\n    btn.title = labelled;\n    btn.setAttribute('aria-label', labelled);\n  }\n\n  // A stylesheet of only the local font declarations, so a font a theme embeds still draws inside the SVG.\n  const fontFaceCss = () => {\n    let css = '';\n    for (const sheet of document.styleSheets) {\n      let rules;\n      try { rules = sheet.cssRules; } catch { continue; } // a cross-origin sheet has no readable rules; pages never carry one\n      for (const rule of rules) {\n        if (rule.type === 5 /* CSSRule.FONT_FACE_RULE */) css += `${rule.cssText}\\n`;\n      }\n    }\n    return css;\n  };\n\n  // Copy every computed declaration of src onto dst. The clone then needs no page stylesheet: var() is already resolved.\n  const inlineStyle = (src, dst) => {\n    const cs = getComputedStyle(src);\n    let css = '';\n    for (let i = 0; i < cs.length; i++) {\n      const name = cs[i];\n      const value = cs.getPropertyValue(name);\n      if (value) css += `${name}:${value};`;\n    }\n    dst.style.cssText = css;\n  };\n\n  // A ::before / ::after box exists only while the rule applies, so copy its computed declarations into a rule of its own. Each element\n  // that has one gets a data-cp marker; the marker keeps the rule from touching any other node in the picture.\n  let cpSeq = 0;\n  const pseudoRule = (src, dst, pseudo) => {\n    const cs = getComputedStyle(src, pseudo);\n    const content = cs.getPropertyValue('content');\n    if (!content || content === 'none' || content === 'normal') return '';\n    let css = '';\n    for (let i = 0; i < cs.length; i++) {\n      const name = cs[i];\n      const value = cs.getPropertyValue(name);\n      if (value) css += `${name}:${value};`;\n    }\n    if (!css) return '';\n    const mark = dst.getAttribute('data-cp') ?? String(++cpSeq);\n    dst.setAttribute('data-cp', mark);\n    return `[data-cp=\"${mark}\"]${pseudo}{${css}}\\n`;\n  };\n\n  // The page's chrome means nothing in a picture: remove the controls and the navigational rail from the clone.\n  const CHROME = '.am-code-copy, .am-diagram-expand, .am-table-controls, [class*=\"delta-switch\"], .am-toc, .am-remark-hover, .am-mark-note';\n\n  function buildSvg(width, height) {\n    const clone = main.cloneNode(true);\n    // The clone has the same node order as the original, so one index walks both trees.\n    const srcNodes = [main, ...main.querySelectorAll('*')];\n    const dstNodes = [clone, ...clone.querySelectorAll('*')];\n    for (let i = 0; i < srcNodes.length; i++) {\n      inlineStyle(srcNodes[i], dstNodes[i]);\n    }\n    let pseudoCss = '';\n    for (let i = 0; i < srcNodes.length; i++) {\n      pseudoCss += pseudoRule(srcNodes[i], dstNodes[i], '::before');\n      pseudoCss += pseudoRule(srcNodes[i], dstNodes[i], '::after');\n    }\n    for (const node of clone.querySelectorAll(CHROME)) node.remove();\n    // A rasterized image is a static snapshot, not a scrollable viewport. Inlined computed styles turn auto heights\n    // into fixed fractional heights on scrolling containers (.am-table-wrap, .am-diagram, .am-annot-scroll, .am-math-block, pre),\n    // and subpixel rounding inside the foreignObject can trigger unwanted scrollbars. Reset unconstrained containers to visible and auto.\n    // For containers with an author-specified finite max-height, keep inlined height and max-height, and hide overflow.\n    for (const scroller of clone.querySelectorAll('.am-table-wrap, .am-diagram, .am-annot-scroll, .am-math-block, pre')) {\n      const maxH = parseFloat(scroller.style.maxHeight || scroller.style.getPropertyValue('max-height'));\n      if (Number.isFinite(maxH) && maxH >= 0) {\n        scroller.style.setProperty('overflow', 'hidden', 'important');\n      } else {\n        scroller.style.setProperty('overflow', 'visible', 'important');\n        scroller.style.setProperty('height', 'auto', 'important');\n        scroller.style.setProperty('max-height', 'none', 'important');\n      }\n    }\n    clone.style.margin = '0';\n    clone.style.width = `${width}px`;\n    clone.style.maxWidth = 'none';\n\n    const wrap = document.createElementNS(XHTML, 'div');\n    wrap.setAttribute('xmlns', XHTML);\n    const body = getComputedStyle(document.body);\n    wrap.style.cssText = `width:${width}px;height:${height}px;margin:0;padding:0;box-sizing:border-box;color:${body.color};font-family:${body.fontFamily};font-size:${body.fontSize};line-height:${body.lineHeight};background-color:${body.backgroundColor};background-image:${body.backgroundImage};`;\n\n    const style = document.createElementNS(XHTML, 'style');\n    style.textContent = `${fontFaceCss()}\\n${pseudoCss}`;\n    wrap.append(style, clone);\n\n    const svg = document.createElementNS(SVG, 'svg');\n    svg.setAttribute('xmlns', SVG);\n    svg.setAttribute('width', String(width));\n    svg.setAttribute('height', String(height));\n    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);\n    const foreign = document.createElementNS(SVG, 'foreignObject');\n    foreign.setAttribute('x', '0');\n    foreign.setAttribute('y', '0');\n    foreign.setAttribute('width', String(width));\n    foreign.setAttribute('height', String(height));\n    foreign.append(wrap);\n    svg.append(foreign);\n    return new XMLSerializer().serializeToString(svg);\n  }\n\n  // A canvas may not exceed the browser's dimension or area limit: shrink the pixels rather than fail on a long page.\n  const pixelScale = (width, height) => {\n    const wanted = Math.min(2, window.devicePixelRatio || 1);\n    return Math.max(0.05, Math.min(wanted, MAX_DIM / width, MAX_DIM / height, Math.sqrt(MAX_AREA / (width * height))));\n  };\n\n  async function rasterize() {\n    await document.fonts?.ready;\n    const rect = main.getBoundingClientRect();\n    const width = Math.max(1, Math.ceil(Math.max(rect.width, main.scrollWidth)));\n    const height = Math.max(1, Math.ceil(Math.max(rect.height, main.scrollHeight)));\n    const svg = buildSvg(width, height);\n    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;\n    const image = new Image();\n    image.decoding = 'async';\n    await new Promise((resolve, reject) => {\n      image.onload = resolve;\n      image.onerror = () => reject(new Error('the browser cannot draw the page as an SVG image'));\n      image.src = url;\n    });\n    const scale = pixelScale(width, height);\n    const canvas = document.createElement('canvas');\n    canvas.width = Math.max(1, Math.round(width * scale));\n    canvas.height = Math.max(1, Math.round(height * scale));\n    const ctx = canvas.getContext('2d');\n    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);\n    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));\n    if (!blob) throw new Error('the browser could not encode the image');\n    return blob;\n  }\n\n  let busy = false;\n  btn.addEventListener('click', async () => {\n    if (busy) return;\n    busy = true;\n    btn.setAttribute('aria-disabled', 'true');\n    say(btn.dataset.working, false);\n    try {\n      // Start rasterizing, then hand the pending blob to ClipboardItem and write within the same click task so the browser keeps the\n      // user's activation. Awaiting the raster first would spend it, and the write would be rejected.\n      const blobPromise = rasterize();\n      const written = (async () => {\n        const item = new ClipboardItem({ 'image/png': blobPromise });\n        await navigator.clipboard.write([item]);\n      })();\n      // The write can be refused at once while the page is still being drawn. Stay busy until both have settled, so a retry cannot\n      // start a second full-page rasterization beside the first.\n      const [write] = await Promise.allSettled([written, blobPromise]);\n      if (write.status === 'rejected') throw write.reason;\n      say(btn.dataset.done, true);\n    } catch (e) {\n      console.error('[am] copy image failed', e);\n      say(btn.dataset.failed, true);\n    } finally {\n      busy = false;\n      btn.removeAttribute('aria-disabled');\n    }\n  });\n})();\n})();\n";
+var RUNTIME_JS = "(() => {\n// How a formula reads in a quote. MathML has no plain text, so src/math.js writes the formula as the draft wrote it, delimiters included, in\n// data-am-tex on the <math> element, and the Remark and Reply scripts read page text through this file. On a page without math there is no\n// such element, so formulaOf is null and every text comes out as it did before.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n\nconst TEX = 'data-am-tex';\n\n// The formula that holds a node, or null.\nconst formulaOf = (node) => node.parentElement?.closest(`[${TEX}]`) ?? null;\n\nconst firstText = (el) => {\n  for (const child of el.childNodes) {\n    const found = child.nodeType === 3 ? child : firstText(child);\n    if (found) return found;\n  }\n  return null;\n};\n\n// What a text node adds to a quote: its data. The first text node of a formula adds the formula, and the others add nothing.\n// (A formula in an error style is plain text with its delimiters, not a <math>, so it comes out once.)\nfunction nodeText(node) {\n  const math = formulaOf(node);\n  if (!math) return node.data;\n  return firstText(math) === node ? math.getAttribute(TEX) : '';\n}\n\n// The text of a node as textContent reads it, but with each formula as written.\nconst textWithMath = (node) => (node.nodeType === 3 ? nodeText(node) : [...node.childNodes].map(textWithMath).join(''));\n\n(() => {\n  const root = document.documentElement;\n  // A host that serves this page inside its own document leaves the real root without the page's settings. The toolbar keeps a copy;\n  // set back what the root lacks, before anything below reads the root. A root's own value, even an empty one, is kept, except a\n  // theme or mode that no toolbar option names: that is the host's own setting (the Claude desktop app sets data-theme=\"dark\"), and\n  // keeping it would leave the page unstyled.\n  const carrier = document.querySelector('.am-toolbar');\n  const listFor = { 'data-theme': 'theme', 'data-mode': 'mode' };\n  const foreign = (attr, value) => {\n    const options = listFor[attr] && document.querySelector(`select[data-am=\"${listFor[attr]}\"]`)?.options;\n    return Boolean(value) && options != null && ![...options].some((o) => o.value === value);\n  };\n  for (const [attr, key] of [['lang', 'data-am-root-lang'], ['dir', 'data-am-root-dir'], ['data-theme', 'data-am-root-theme'], ['data-mode', 'data-am-root-mode'], ['data-style', 'data-am-root-style']]) {\n    const own = root.getAttribute(attr);\n    if ((own === null || foreign(attr, own)) && carrier?.getAttribute(key) != null) root.setAttribute(attr, carrier.getAttribute(key));\n  }\n  // Each toolbar list sets one root attribute; its options name the values, so the runtime names no theme or mode.\n  for (const [name, attr] of [['theme', 'data-theme'], ['mode', 'data-mode']]) {\n    const select = document.querySelector(`select[data-am=\"${name}\"]`);\n    if (!select) continue;\n    select.value = root.getAttribute(attr);\n    select.addEventListener('change', () => root.setAttribute(attr, select.value));\n  }\n\n  // \u2500\u2500 Text size \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  // A\u2212 / A+ set --am-scale on the root; every page size and line (src/themes/type-scale.js) follows it, and the drawing boxes grow\n  // with it while their viewBox keeps the units Node measured. The buttons carry the range from SCALE, so this script keeps no\n  // second copy of the numbers. A reader's choice is remembered in this browser and wins over the page's own scale; where storage\n  // is off (am serve, file://) it lasts for this tab, and the click still works.\n  const scaleDown = document.querySelector('[data-am=\"scale-down\"]');\n  const scaleUp = document.querySelector('[data-am=\"scale-up\"]');\n  if (scaleDown && scaleUp) {\n    const min = Number(scaleDown.dataset.min);\n    const max = Number(scaleDown.dataset.max);\n    const step = Number(scaleDown.dataset.step);\n    const storeKey = 'am-scale';\n    let value;\n\n    const inRange = (n) => Number.isFinite(n) && n >= min && n <= max;\n    const savedScale = () => {\n      try {\n        return Number(localStorage.getItem(storeKey));\n      } catch {\n        return NaN;\n      }\n    };\n    const saveScale = (n) => {\n      try {\n        localStorage.setItem(storeKey, String(n));\n      } catch {\n        // Storage may be off (am serve, file://); the size then lasts until the tab closes.\n      }\n    };\n\n    const updateButtons = () => {\n      const setUnavailable = (btn, unavailable) => {\n        if (unavailable) btn.setAttribute('aria-disabled', 'true');\n        else btn.removeAttribute('aria-disabled');\n      };\n      setUnavailable(scaleDown, value <= min);\n      setUnavailable(scaleUp, value >= max);\n    };\n\n    // One step is a multiple of `step`: Math.round first, then two decimals, so 1.1500000000000001 becomes 1.15.\n    const setScale = (next, remember = false) => {\n      value = Math.min(max, Math.max(min, Number((Math.round(next / step) * step).toFixed(2))));\n      root.style.setProperty('--am-scale', String(value));\n      for (const svg of document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas) > svg:is([role=\"img\"], [role=\"group\"])')) {\n        const box = svg.viewBox?.baseVal;\n        if (!box || !(box.width > 0) || !(box.height > 0)) continue;\n        svg.setAttribute('width', String(Math.ceil(box.width * value)));\n        svg.setAttribute('height', String(Math.ceil(box.height * value)));\n      }\n      updateButtons();\n      if (remember) saveScale(value);\n      window.dispatchEvent(new Event('am-scale'));\n    };\n\n    // A page with no stored choice is left exactly as it was rendered: no inline variable, no svg rewrite, no extra layout pass.\n    value = parseFloat(getComputedStyle(root).getPropertyValue('--am-scale')) || 1;\n    updateButtons();\n    const saved = savedScale();\n    if (inRange(saved) && saved !== value) setScale(saved);\n    scaleDown.hidden = false;\n    scaleUp.hidden = false;\n    scaleDown.addEventListener('click', () => {\n      if (scaleDown.getAttribute('aria-disabled') === 'true') return;\n      setScale(value - step, true);\n    });\n    scaleUp.addEventListener('click', () => {\n      if (scaleUp.getAttribute('aria-disabled') === 'true') return;\n      setScale(value + step, true);\n    });\n  }\n\n  // A phone cannot show the whole toolbar. Its end (Reply, Remark, Copy source) is what a phone showed before the text-size\n  // buttons, so open at that end: Theme, Mode and A\u2212 / A+ are reached by scrolling toward the start. A reader scroll leaves the\n  // position we set, so a later resize does not pull the toolbar back.\n  if (carrier) {\n    const rtl = getComputedStyle(carrier).direction === 'rtl';\n    let lastProgrammatic = null;\n    let readerScrolled = false;\n    const scrollToEnd = () => {\n      if (carrier.scrollWidth <= carrier.clientWidth) return;\n      // Chrome keeps a right-to-left box's scrollLeft negative; the browser clamps either value to the real end.\n      carrier.scrollTo({ left: rtl ? -carrier.scrollWidth : carrier.scrollWidth });\n      lastProgrammatic = carrier.scrollLeft;\n    };\n    carrier.addEventListener('scroll', () => {\n      if (Math.abs(carrier.scrollLeft - lastProgrammatic) > 1) readerScrolled = true;\n    });\n    scrollToEnd();\n    addEventListener('resize', () => {\n      if (!readerScrolled) scrollToEnd();\n    });\n  }\n\n  // The toolbar floats over the top corner, and its width changes (the new-version button, a longer language, a phone). The header keeps\n  // its first lines clear of it with a float of the toolbar's own size (base.css, .am-bar-fit .am-head::before): only the lines next to\n  // the toolbar get shorter, and a title below it keeps the whole header. The size is measured here and set as --am-bar-w / --am-bar-h;\n  // without this script the CSS keeps a fixed 300px reservation instead.\n  const head = document.querySelector('.am-head');\n  if (carrier && head) {\n    const GAP = 12;\n    const fit = () => {\n      const bar = carrier.getBoundingClientRect();\n      const box = head.getBoundingClientRect();\n      const toward = getComputedStyle(head).direction === 'rtl' ? bar.right - box.left : box.right - bar.left;\n      // The header's top in the page, not in the window, since the toolbar stays in the window while the page scrolls.\n      const reach = bar.bottom + GAP / 2 - (box.top + scrollY);\n      root.style.setProperty('--am-bar-w', `${toward > 0 && reach > 0 ? Math.ceil(toward + GAP) : 0}px`);\n      root.style.setProperty('--am-bar-h', `${Math.max(0, Math.ceil(reach))}px`);\n    };\n    root.classList.add('am-bar-fit');\n    fit();\n    new ResizeObserver(fit).observe(carrier);\n    addEventListener('resize', fit);\n    document.fonts?.ready.then(fit);\n  }\n\n  // True when the text is on the clipboard, false when both paths failed. The async clipboard API is refused on some origins\n  // (a page the browser treats as insecure), so the textarea and execCommand are the fallback, and execCommand reports whether\n  // it copied anything. A button that says it copied when nothing did is worse than one that admits the copy failed: the reader\n  // pastes whatever the clipboard already held.\n  const copyText = async (text) => {\n    try {\n      await navigator.clipboard.writeText(text);\n      return true;\n    } catch {\n      const ta = Object.assign(document.createElement('textarea'), { value: text });\n      document.body.append(ta);\n      try {\n        ta.select();\n        return document.execCommand?.('copy') === true;\n      } catch {\n        return false; // execCommand can throw instead of returning false: that copy failed too\n      } finally {\n        ta.remove();\n      }\n    }\n  };\n  // A button reads its label from data-done for a moment after a copy, then comes back to the label it started from. That label is\n  // read once, here: a second click inside the moment would otherwise read the copied label off the button and restore that instead,\n  // and the label would never come back. The moment starts again on each click: the timer of the previous one is left to fire and\n  // does nothing (a token, so this needs no timer bookkeeping the page scripts do not already have). A failed copy reads data-failed\n  // instead, in the page language.\n  const flasher = (btn) => {\n    const idle = btn.textContent;\n    let clicks = 0;\n    return (copied) => {\n      btn.textContent = copied ? btn.dataset.done : btn.dataset.failed;\n      const mine = ++clicks;\n      setTimeout(() => { if (mine === clicks) btn.textContent = idle; }, 1400);\n    };\n  };\n\n  const copyBtn = document.querySelector('[data-am=\"copy\"]');\n  if (copyBtn) {\n    const flash = flasher(copyBtn);\n    copyBtn.addEventListener('click', async () => {\n      const nodes = document.querySelectorAll('#am-source');\n      flash(await copyText(nodes[nodes.length - 1]?.value ?? ''));\n    });\n  }\n\n  // Each code block copies its own lines, without the line numbers.\n  for (const btn of document.querySelectorAll('[data-am=\"copy-code\"]')) {\n    const flash = flasher(btn);\n    btn.addEventListener('click', async () => {\n      const lines = btn.closest('.am-codeblock')?.querySelectorAll('.am-ln') ?? [];\n      flash(await copyText([...lines].map((l) => l.textContent).join('\\n')));\n    });\n  }\n\n  // \u2500\u2500 Sideways scroll cue \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  // Overlay scrollbars (macOS) show nothing until the reader scrolls, so a wide code block or diagram looked cut off. While a box\n  // hides content past its left or right edge it carries am-more-left / am-more-right, and base.css fades that edge. The sides are\n  // physical because a box can read in the other direction than the page (code stays left to right on a right-to-left page); there\n  // scrollLeft counts down from 0, so the hidden amounts use its size.\n  const scrollers = document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas), .am-code, .am-annot-scroll');\n  const markMore = (el) => {\n    const hidden = el.scrollWidth - el.clientWidth;\n    let left = false;\n    let right = false;\n    if (hidden > 1) {\n      const atStart = Math.abs(el.scrollLeft);\n      const rtl = getComputedStyle(el).direction === 'rtl';\n      [left, right] = rtl ? [atStart < hidden - 1, atStart > 1] : [atStart > 1, atStart < hidden - 1];\n    }\n    el.classList.toggle('am-more-left', left);\n    el.classList.toggle('am-more-right', right);\n  };\n  if (scrollers.length) {\n    const resized = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => entries.forEach((e) => markMore(e.target))) : null;\n    for (const el of scrollers) {\n      el.addEventListener('scroll', () => markMore(el), { passive: true });\n      resized?.observe(el);\n      markMore(el);\n    }\n  }\n\n  // \u2500\u2500 Diagram Lightbox & Pan-Zoom Viewer \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  const diagrams = document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas)');\n  const lb = document.querySelector('.am-lightbox');\n  if (diagrams.length && lb) {\n    const backdrop = lb.querySelector('.am-lightbox-backdrop');\n    const titleText = lb.querySelector('.am-lightbox-title-text');\n    const stage = lb.querySelector('.am-lightbox-stage');\n    const canvas = lb.querySelector('.am-lightbox-canvas');\n    const closeBtn = lb.querySelector('.am-lightbox-close');\n    const expandLabel = lb.getAttribute('data-expand') || 'Expand diagram';\n\n    let scale = 1, x = 0, y = 0, fitScale = 1, curVw = 800, curVh = 600;\n    let isDragging = false, activePointerId = null, startX = 0, startY = 0, origX = 0, origY = 0;\n    let lastTrigger = null;\n\n    const apply = () => {\n      canvas.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;\n    };\n\n    const zoomTo = (newScale, pivotX, pivotY) => {\n      newScale = Math.max(0.2, Math.min(6.0, newScale));\n      if (Math.abs(newScale - scale) < 0.0001) return;\n      const r = newScale / scale;\n      x = pivotX - (pivotX - x) * r;\n      y = pivotY - (pivotY - y) * r;\n      scale = newScale;\n      apply();\n    };\n\n    const open = (diag, trigger) => {\n      const svg = [...diag.children].find((el) => el.tagName.toLowerCase() === 'svg');\n      if (!svg) return;\n      lastTrigger = trigger;\n\n      const panel = diag.closest('.am-panel');\n      const panelTitle = panel?.querySelector('.am-panel-head h2')?.textContent?.trim() || panel?.querySelector('h2')?.textContent?.trim() || lb.getAttribute('aria-label') || 'Diagram viewer';\n      if (titleText) titleText.textContent = panelTitle;\n\n      const clone = svg.cloneNode(true);\n      // A linked diagram (a steps block) is a still picture here: its listeners live on its block, not on the viewer.\n      clone.querySelectorAll('[data-link]').forEach((el) => {\n        for (const attr of ['data-link', 'tabindex', 'role', 'aria-label']) el.removeAttribute(attr);\n      });\n      clone.querySelectorAll('[data-ends]').forEach((el) => el.removeAttribute('data-ends'));\n      const defElements = clone.querySelectorAll('[id]');\n      if (defElements.length) {\n        const idMap = new Map();\n        defElements.forEach((el, i) => {\n          const oldId = el.id;\n          const newId = `${oldId}-lb-${i}`;\n          idMap.set(oldId, newId);\n          el.id = newId;\n        });\n        const urlAttrs = ['marker-start', 'marker-mid', 'marker-end', 'fill', 'stroke', 'filter', 'clip-path', 'mask'];\n        clone.querySelectorAll('*').forEach((el) => {\n          for (const attr of urlAttrs) {\n            const val = el.getAttribute(attr);\n            if (val && val.startsWith('url(#')) {\n              const id = val.slice(5, -1);\n              if (idMap.has(id)) el.setAttribute(attr, `url(#${idMap.get(id)})`);\n            }\n          }\n          const href = el.getAttribute('href') || el.getAttribute('xlink:href');\n          if (href && href.startsWith('#')) {\n            const id = href.slice(1);\n            if (idMap.has(id)) {\n              if (el.hasAttribute('href')) el.setAttribute('href', `#${idMap.get(id)}`);\n              if (el.hasAttribute('xlink:href')) el.setAttribute('xlink:href', `#${idMap.get(id)}`);\n            }\n          }\n        });\n      }\n\n      const vb = svg.viewBox?.baseVal;\n      curVw = (vb && vb.width > 0) ? vb.width : (parseFloat(svg.getAttribute('width')) || svg.clientWidth || 800);\n      curVh = (vb && vb.height > 0) ? vb.height : (parseFloat(svg.getAttribute('height')) || svg.clientHeight || 600);\n      // The panel's svg carries the reading floor as min-width (layout-dom.js floorDiagrams); the viewer sizes the clone itself.\n      clone.style.minWidth = '';\n      clone.style.width = `${curVw}px`;\n      clone.style.height = `${curVh}px`;\n      canvas.innerHTML = '';\n      canvas.append(clone);\n      lb.removeAttribute('hidden');\n      document.body.style.overflow = 'hidden';\n\n      const rect = stage.getBoundingClientRect();\n      const pad = 48;\n      const availW = Math.max(100, rect.width - pad * 2);\n      const availH = Math.max(100, rect.height - pad * 2);\n      fitScale = Math.min(availW / curVw, availH / curVh, 1.0);\n      scale = fitScale;\n      x = (rect.width - curVw * scale) / 2;\n      y = (rect.height - curVh * scale) / 2;\n      apply();\n      closeBtn.focus();\n    };\n\n    const close = () => {\n      if (lb.hasAttribute('hidden')) return;\n      lb.setAttribute('hidden', '');\n      canvas.innerHTML = '';\n      document.body.style.overflow = '';\n      lastTrigger?.focus();\n    };\n\n    stage.addEventListener('wheel', (e) => {\n      e.preventDefault();\n      const rect = stage.getBoundingClientRect();\n      const dy = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);\n      const factor = Math.exp(-Math.max(-200, Math.min(200, dy)) * 0.0015);\n      zoomTo(scale * factor, e.clientX - rect.left, e.clientY - rect.top);\n    }, { passive: false });\n\n    stage.addEventListener('pointerdown', (e) => {\n      if (e.button !== 0 || isDragging) return;\n      isDragging = true;\n      activePointerId = e.pointerId;\n      startX = e.clientX;\n      startY = e.clientY;\n      origX = x;\n      origY = y;\n      stage.setPointerCapture(e.pointerId);\n      stage.classList.add('am-panning');\n    });\n\n    stage.addEventListener('pointermove', (e) => {\n      if (!isDragging || e.pointerId !== activePointerId) return;\n      x = origX + (e.clientX - startX);\n      y = origY + (e.clientY - startY);\n      apply();\n    });\n\n    const endDrag = (e) => {\n      if (!isDragging || e.pointerId !== activePointerId) return;\n      isDragging = false;\n      activePointerId = null;\n      stage.classList.remove('am-panning');\n      try { stage.releasePointerCapture(e.pointerId); } catch {}\n    };\n    stage.addEventListener('pointerup', endDrag);\n    stage.addEventListener('pointercancel', endDrag);\n\n    stage.addEventListener('dblclick', () => {\n      const rect = stage.getBoundingClientRect();\n      scale = fitScale;\n      x = (rect.width - curVw * scale) / 2;\n      y = (rect.height - curVh * scale) / 2;\n      apply();\n    });\n\n    closeBtn.addEventListener('click', close);\n    backdrop.addEventListener('click', close);\n    window.addEventListener('keydown', (e) => {\n      if (e.key === 'Escape' && !lb.hasAttribute('hidden')) close();\n    });\n\n    lb.addEventListener('keydown', (e) => {\n      if (e.key !== 'Tab') return;\n      const focusables = lb.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex=\"-1\"])');\n      if (!focusables.length) return;\n      const first = focusables[0];\n      const last = focusables[focusables.length - 1];\n      if (e.shiftKey && document.activeElement === first) {\n        e.preventDefault();\n        last.focus();\n      } else if (!e.shiftKey && document.activeElement === last) {\n        e.preventDefault();\n        first.focus();\n      }\n    });\n\n    const expandSvg = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"15 3 21 3 21 9\"></polyline><polyline points=\"9 21 3 21 3 15\"></polyline><line x1=\"21\" y1=\"3\" x2=\"14\" y2=\"10\"></line><line x1=\"3\" y1=\"21\" x2=\"10\" y2=\"14\"></line></svg>';\n    diagrams.forEach((diag) => {\n      const btn = document.createElement('button');\n      btn.type = 'button';\n      btn.className = 'am-diagram-expand';\n      btn.title = expandLabel;\n      btn.setAttribute('aria-label', expandLabel);\n      btn.innerHTML = expandSvg;\n      btn.addEventListener('click', () => open(diag, btn));\n      diag.prepend(btn);\n    });\n  }\n})();\n(() => {\n// The reply a reader copies from the page: one Markdown text with the decisions, the panel comments and the block remarks.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n// decisions: [{ panel, question, picked: [label], suggested: [label], touched }]; comments: [{ panel, title, text }];\n// remarks: [{ panel, quote, kind, note }], where quote is the start of the marked block and kind is a key of ui.kinds.\n// Comment and remark text is quoted line by line, so text the reader typed cannot pass as part of the structure.\n// rtl: the page reads right to left, so the arrow before each answer points left, the way the text runs.\nfunction replyText({ title, decisions, comments, remarks = [], ui, rtl = false }) {\n  const arrow = rtl ? '\u2190' : '\u2192';\n  const out = [`# Re: ${title}`];\n  if (decisions.length) {\n    out.push('', `## ${ui.decisions}`);\n    decisions.forEach((d, i) => {\n      const answer = d.picked.length ? d.picked.map((l) => `**${l}**`).join(', ') : '**\u2014**';\n      // Every option starts unselected, so an ask the reader never clicked has no answer: the reply names the suggestion\n      // instead of passing it off as the reader's choice.\n      const same = d.picked.length === d.suggested.length && d.picked.every((l) => d.suggested.includes(l));\n      const suggested = d.suggested.join(', ') || '\u2014';\n      const why = !d.touched ? `${ui.untouched}: ${suggested}` : same ? ui.confirmed : `${ui.was}: ${suggested}`;\n      out.push(`${i + 1}. [${d.panel}] ${d.question}`, `   ${arrow} ${answer} _(${why})_`);\n    });\n  }\n  const written = comments.filter((c) => c.text.trim());\n  const quoted = (text) => (text.trim() ? text.trim().split('\\n').map((l) => `  > ${l}`) : []);\n  if (written.length) {\n    out.push('', `## ${ui.comments}`);\n    for (const c of written) out.push(`- **${c.panel} \xB7 ${c.title}**`, ...quoted(c.text));\n  }\n  if (remarks.length) {\n    out.push('', `## ${ui.remarks}`);\n    for (const r of remarks) {\n      const label = [r.panel, ui.kinds?.[r.kind] ?? r.kind].filter(Boolean).join(' \xB7 ');\n      out.push(`- **${label}** \"${r.quote}\"`, ...quoted(r.note));\n    }\n  }\n  if (written.length || remarks.some((r) => r.note.trim())) out.push('', `_${ui.typed}_`);\n  return `${out.join('\\n')}\\n`;\n}\n\n// A letter of a right-to-left script. One definition for the page builder (src/bidi.js) and for the right-to-left page script\n// (src/runtime/reply-view.js), so the two cannot drift apart. A plain ES module; the page script gets this file in front of\n// reply-view.js, with its `export` keyword dropped and reply-view.js's import of it removed (src/runtime/compose.js).\nconst RTL_LETTER = /[\\p{Script=Hebrew}\\p{Script=Arabic}\\p{Script=Syriac}\\p{Script=Thaana}\\p{Script=Nko}\\p{Script=Samaritan}\\p{Script=Mandaic}]/u;\n\n// The reply as the reader sees it in the Reply sheet (src/runtime/reply.js): the Markdown that Copy copies, drawn as headings, bold answers\n// and quoted comments instead of raw \"# Re: ...\", \"1. [E] ...\" and \"- **A \xB7 ...**\" lines. Each line gets its own direction, so a\n// Hebrew reader sees Latin answers and paths in place; a line with no right-to-left letter reads left to right, as on any other page.\n// The raw Markdown stays in the sheet under a fold, so the copied text does not change.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped and rtl-letter.js in front of it in place of the\n// import (src/runtime/compose.js).\n\nconst escHtml = (s) => s.replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' })[c]);\n// A line with a right-to-left letter reads right to left; a line without one (an English comment, a path) reads left to right.\nconst dirOf = (s) => (RTL_LETTER.test(s) ? 'rtl' : 'ltr');\n\n// The only inline Markdown src/runtime/reply-text.js writes: **answer**, _(note)_ and the \"quote\" of a remark. Each piece is isolated in its own direction,\n// so a Latin answer inside a Hebrew line keeps its place, and \"A \xB7 title\" still starts with the panel letter.\nconst piece = (tag, text) => `<${tag}><bdi dir=\"${dirOf(text)}\">${text}</bdi></${tag}>`;\nfunction inline(s) {\n  return escHtml(s)\n    .replace(/\\*\\*(.+?)\\*\\*/g, (_, t) => piece('strong', t))\n    .replace(/(^|\\s)_(.+?)_(?=\\s|$)/g, (_, pre, t) => pre + piece('em', t))\n    // The quoted start of a marked block (\"- **A \xB7 concern** \"text\"\"): isolated, so Latin text in a Hebrew line keeps its place.\n    .replace(/&quot;(.+)&quot;$/, (_, t) => `&quot;<bdi dir=\"${dirOf(t)}\">${t}</bdi>&quot;`);\n}\n\n// The reply text (src/runtime/reply-text.js) as HTML, one block per line.\nfunction replyViewHtml(text) {\n  return text\n    .replace(/\\n$/, '')\n    .split('\\n')\n    .map((line) => {\n      const dir = dirOf(line);\n      let m;\n      if (!line.trim()) return '<div class=\"am-rv-gap\"></div>';\n      if ((m = line.match(/^(#{1,2}) (.*)$/))) return `<div class=\"am-rv-h${m[1].length}\" dir=\"${dir}\">${inline(m[2])}</div>`;\n      if ((m = line.match(/^(\\d+)\\. \\[([^\\]]*)\\] (.*)$/))) {\n        return `<div class=\"am-rv-q\" dir=\"${dir}\"><bdi>${m[1]}.</bdi> <bdi class=\"am-rv-tag\">${escHtml(m[2])}</bdi> ${inline(m[3])}</div>`;\n      }\n      if ((m = line.match(/^ {3}([\u2190\u2192]) (.*)$/))) return `<div class=\"am-rv-a\" dir=\"${dir}\">${m[1]} ${inline(m[2])}</div>`;\n      if ((m = line.match(/^- (.*)$/))) return `<div class=\"am-rv-c\" dir=\"${dir}\">${inline(m[1])}</div>`;\n      // A comment line is shown exactly as the reader typed it.\n      if ((m = line.match(/^ {2}> ?(.*)$/))) return `<div class=\"am-rv-quote\" dir=\"${dirOf(m[1])}\">${escHtml(m[1]) || '&nbsp;'}</div>`;\n      return `<div dir=\"${dir}\">${inline(line)}</div>`;\n    })\n    .join('');\n}\n\n// Answer on the page: every panel gets a Comment box, and the Reply button collects the ask answers, the comments and the remarks\n// into one Markdown reply (replyText) to copy back to the agent. Answers and comments stay in localStorage across reloads.\n// The remark script (remark.js) adds the blocks the reader marked, through window.__amRemarkData, and tells this script about a change\n// with an \"am-remark-change\" event on the document.\n// The Reply sheet shows the reply drawn (replyViewHtml) with the Markdown that Copy copies under a fold. Once the reader has given any\n// input, a bar at the bottom of the page shows the counts and copies the reply in one click, so there is no trip to the top-right button.\nconst replyBtn = document.querySelector('[data-am=\"reply\"]');\nconst COMMENT_ICON = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"></path></svg>';\nif (replyBtn) {\n  const ui = JSON.parse(replyBtn.dataset.ui);\n  const storeKey = `am-reply:${location.pathname}`;\n  // A page served by `am serve` runs without localStorage and the phone may discard its tab, so it keeps the answers on the\n  // server: data-am-save names the write route and data-am-state carries what the server already holds for this page version.\n  const serve = (() => {\n    const { amSave: save, amState: state } = document.body?.dataset ?? {};\n    if (!save) return null;\n    try {\n      return { save, restored: state ? JSON.parse(state) : null };\n    } catch {\n      return { save, restored: null };\n    }\n  })();\n  let saveTimer = null;\n  let pendingPatch = null;\n  const sendSave = (patch) => {\n    fetch(serve.save, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch), keepalive: true })\n      .catch(() => {}); // a page that cannot reach the server keeps its state until it closes, as before\n  };\n  // Typing must not put one request per keystroke on the server; localStorage is written at once, the network follows.\n  const saveSoon = (patch) => {\n    clearTimeout(saveTimer);\n    pendingPatch = patch;\n    saveTimer = setTimeout(() => {\n      pendingPatch = null;\n      sendSave(patch);\n    }, 400);\n  };\n  // A hidden or closing page sends the change it still holds, before the timer can run.\n  const flushSave = () => {\n    if (!pendingPatch) return;\n    clearTimeout(saveTimer);\n    sendSave(pendingPatch);\n    pendingPatch = null;\n  };\n  document.addEventListener('visibilitychange', () => {\n    if (document.visibilityState === 'hidden') flushSave();\n  });\n  window.addEventListener('pagehide', flushSave);\n  // A preview may draw a mock panel; it gets no comment box and cannot shadow the real panel's id.\n  const panels = [...document.querySelectorAll('.am-panel')].filter((panel) => !panel.closest('.am-ask-preview'));\n  // An ask inside a preview is part of the drawing, not a decision of the page.\n  const asks = [...document.querySelectorAll('.am-ask')].filter((a) => !a.closest('.am-ask-preview'));\n  // Answers are saved by question text, so they still match after am patch has renumbered the asks.\n  // Page text without the word joiners a right-to-left page puts after a Hebrew prefix hyphen (src/bidi.js): the reply and the saved\n  // answers hold the text as the draft wrote it, a formula too (src/runtime/math-text.js).\n  const WJ = new RegExp(String.fromCharCode(0x2060), 'g');\n  const textOf = (el) => el && textWithMath(el).replace(WJ, '').trim();\n  const keyOf = (ask) => textOf(ask.querySelector('legend')) ?? ask.dataset.ask;\n  const touched = new Set();\n  const boxes = new Map();\n  // The bar is built below with the sheet; the handlers that change the counts only call this.\n  let refreshBar = () => {};\n  // The textarea a failed copy keeps selected, so the reader can still use the keyboard shortcut.\n  let stuck = null;\n\n  const load = () => {\n    if (serve?.restored?.reply) return serve.restored.reply;\n    try {\n      return JSON.parse(localStorage.getItem(storeKey)) || {};\n    } catch {\n      return {};\n    }\n  };\n  const save = () => {\n    const state = {\n      asks: Object.fromEntries(asks.map((a) => [keyOf(a), { picked: picked(a), touched: touched.has(a) }])),\n      comments: Object.fromEntries([...boxes].map(([id, box]) => [id, box.value]).filter(([, text]) => text.trim())),\n    };\n    try {\n      localStorage.setItem(storeKey, JSON.stringify(state));\n    } catch {\n      // Storage may be off (private window, file:// policy); answers then last until the page closes.\n    }\n    if (serve) saveSoon({ reply: state });\n  };\n  // A preview can hold a mock form; those controls are a picture, not the reader's answer.\n  const inputsOf = (ask) => [...ask.querySelectorAll('input')].filter((i) => !i.closest('.am-ask-preview'));\n  const picked = (ask) => inputsOf(ask).filter((i) => i.checked).map((i) => i.value);\n  const panelOf = (el) => {\n    const panel = el.closest('.am-panel');\n    return { id: panel?.id.replace(/^panel-/, '') ?? '', title: textOf(panel?.querySelector('.am-panel-head h2')) ?? '' };\n  };\n\n  const saved = load();\n  for (const ask of asks) {\n    const inputs = inputsOf(ask);\n    const state = saved.asks?.[keyOf(ask)];\n    // A saved answer applies only while every picked option still exists on the page, and only if the reader clicked: older versions started\n    // with the suggestion selected and saved it untouched, and that state must come back unselected.\n    if (state?.touched && Array.isArray(state.picked) && state.picked.every((v) => inputs.some((i) => i.value === v))) {\n      for (const input of inputs) input.checked = state.picked.includes(input.value);\n      touched.add(ask);\n    }\n    // A click counts even on the option that is already picked: the reader confirms the suggestion.\n    const answer = (e) => {\n      if (e?.target?.closest?.('.am-ask-preview')) return;\n      touched.add(ask);\n      save();\n      refreshBar();\n    };\n    ask.addEventListener('change', answer);\n    ask.addEventListener('click', (e) => { if (e.target.matches('input')) answer(e); });\n    // In cards the whole card looks clickable, so a click on its preview picks the option too. A control in the drawing is not the answer.\n    ask.addEventListener('click', (e) => {\n      if (!ask.classList.contains('am-ask--cards')) return;\n      if (!e.target.closest?.('.am-ask-preview') || e.target.closest('input, button, a, select, textarea, summary, label')) return;\n      const input = e.target.closest('.am-ask-card')?.querySelector('input');\n      if (!input) return;\n      const wasPicked = input.checked;\n      input.click();\n      // A radio that is already on sends no change event, and the click still confirms the suggestion.\n      if (wasPicked && input.type === 'radio') answer();\n    });\n  }\n\n  for (const panel of panels) {\n    const id = panel.id.replace(/^panel-/, '');\n    // An icon only: narrow panels have no room for a word next to the title.\n    const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'am-comment-btn', title: ui.comment, innerHTML: COMMENT_ICON });\n    btn.setAttribute('aria-label', `${ui.comment} ${id}`);\n    btn.setAttribute('aria-expanded', 'false');\n    const wrap = Object.assign(document.createElement('div'), { className: 'am-comment', hidden: true });\n    const box = Object.assign(document.createElement('textarea'), { rows: 3, placeholder: ui.commentHint, value: saved.comments?.[id] ?? '' });\n    box.setAttribute('aria-label', `${ui.comment} ${id}`);\n    wrap.append(box);\n    const show = (open) => {\n      wrap.hidden = !open;\n      btn.setAttribute('aria-expanded', String(open));\n    };\n    btn.addEventListener('click', () => {\n      show(wrap.hidden);\n      if (!wrap.hidden) box.focus();\n    });\n    box.addEventListener('input', () => {\n      btn.classList.toggle('am-comment-btn--on', Boolean(box.value.trim()));\n      save();\n      refreshBar();\n    });\n    btn.classList.toggle('am-comment-btn--on', Boolean(box.value.trim()));\n    if (box.value.trim()) show(true);\n    (panel.querySelector('.am-panel-head') ?? panel).append(btn);\n    panel.append(wrap);\n    boxes.set(id, box);\n  }\n\n  const sheet = document.createElement('dialog');\n  sheet.className = 'am-reply';\n  sheet.setAttribute('aria-label', ui.title);\n  sheet.innerHTML = '<div class=\"am-reply-head\"><strong></strong><span></span></div><div class=\"am-reply-view\" tabindex=\"0\"></div><details class=\"am-reply-raw\"><summary></summary><textarea readonly rows=\"10\"></textarea></details><div class=\"am-reply-actions\"><button type=\"button\" class=\"am-btn\" data-act=\"copy\"></button><button type=\"button\" class=\"am-btn\" data-act=\"close\"></button></div>';\n  sheet.querySelector('strong').textContent = ui.title;\n  sheet.querySelector('span').textContent = ui.hint;\n  sheet.querySelector('summary').textContent = ui.raw;\n  const view = sheet.querySelector('.am-reply-view');\n  const raw = sheet.querySelector('details');\n  const text = sheet.querySelector('textarea');\n  const copy = sheet.querySelector('[data-act=\"copy\"]');\n  const close = sheet.querySelector('[data-act=\"close\"]');\n  copy.textContent = ui.copy;\n  close.textContent = ui.close;\n  document.body.append(sheet);\n\n  const compose = () => {\n    const decisions = asks.map((ask) => ({\n      panel: panelOf(ask).id,\n      question: textOf(ask.querySelector('legend')) ?? '',\n      picked: picked(ask),\n      suggested: inputsOf(ask).filter((i) => i.hasAttribute('data-suggested')).map((i) => i.value),\n      touched: touched.has(ask),\n    }));\n    const comments = [...boxes].map(([id, box]) => ({ panel: id, title: panelOf(box).title, text: box.value }));\n    const remarks = window.__amRemarkData?.() ?? [];\n    const empty = !decisions.length && !comments.some((c) => c.text.trim()) && !remarks.length;\n    const title = textOf(document.querySelector('.am-head h1')) ?? document.title;\n    return empty ? '' : replyText({ title, decisions, comments, remarks, ui, rtl: document.documentElement.dir === 'rtl' });\n  };\n\n  // The text goes through the clipboard API; a page the browser treats as insecure (file://) falls back to selecting a temporary\n  // textarea, because the sheet's own textarea can sit inside a closed fold, where it cannot be selected.\n  // That fallback reports whether it worked. When it does not, the text stays selected (so Cmd/Ctrl+C still copies it) and the\n  // button says what to do instead of showing the \"Copied \u2713\" label the reader cannot trust.\n  const copyText = async (str, btn) => {\n    stuck?.remove();\n    stuck = null;\n    try {\n      await navigator.clipboard.writeText(str);\n      // The close_after_reply script (close-after-reply.js) closes the tab once the reply is on the clipboard.\n      document.dispatchEvent(new Event('am-reply-copied'));\n    } catch {\n      const tmp = Object.assign(document.createElement('textarea'), { value: str });\n      tmp.style.cssText = 'position:fixed;top:-100px;opacity:0';\n      // Inside the sheet while it is open: while a modal dialog is open the rest of the document cannot take focus, so a textarea\n      // in the body can be selected but not focused, and the keyboard shortcut the reader is told to press would copy nothing.\n      // The bottom bar copies while the sheet is closed, and a closed dialog is not rendered, so there the textarea goes in the body.\n      (sheet.open ? sheet : document.body).append(tmp);\n      tmp.select();\n      let copied = false;\n      try {\n        copied = document.execCommand('copy');\n      } catch {\n        copied = false;\n      }\n      if (!copied) {\n        stuck = tmp;\n        btn.textContent = ui.copyFailed;\n        setTimeout(() => { btn.textContent = ui.copy; }, 3000);\n        return;\n      }\n      tmp.remove();\n    }\n    btn.textContent = ui.done;\n    setTimeout(() => { btn.textContent = ui.copy; }, 1400);\n  };\n\n  const open = () => {\n    const reply = compose();\n    if (reply) view.innerHTML = replyViewHtml(reply);\n    else view.textContent = ui.empty;\n    view.scrollTop = 0;\n    text.value = reply;\n    raw.open = false;\n    raw.hidden = !reply;\n    copy.disabled = !reply;\n    if (sheet.showModal) sheet.showModal();\n    else sheet.setAttribute('open', '');\n    (reply ? copy : close).focus();\n  };\n  replyBtn.addEventListener('click', open);\n  close.addEventListener('click', () => (sheet.close ? sheet.close() : sheet.removeAttribute('open')));\n  // A failed copy leaves the text selected for Cmd/Ctrl+C; closing the sheet drops that textarea.\n  sheet.addEventListener('close', () => { stuck?.remove(); stuck = null; });\n  copy.addEventListener('click', () => copyText(text.value, copy));\n\n  const bar = Object.assign(document.createElement('div'), { className: 'am-reply-bar', hidden: true });\n  bar.setAttribute('role', 'region');\n  bar.setAttribute('aria-label', ui.title);\n  const summary = Object.assign(document.createElement('span'), { className: 'am-reply-bar-count' });\n  summary.setAttribute('aria-live', 'polite');\n  const preview = Object.assign(document.createElement('button'), { type: 'button', className: 'am-btn', textContent: ui.preview });\n  const barCopy = Object.assign(document.createElement('button'), { type: 'button', className: 'am-btn am-btn--reply', textContent: ui.copy });\n  preview.addEventListener('click', open);\n  barCopy.addEventListener('click', () => copyText(compose(), barCopy));\n  bar.append(summary, preview, barCopy);\n  document.body.append(bar);\n\n  // The bar shows only the counts that are above zero, and only once there is any input at all.\n  refreshBar = () => {\n    const counts = {\n      answered: touched.size,\n      comments: [...boxes.values()].filter((box) => box.value.trim()).length,\n      remarks: (window.__amRemarkData?.() ?? []).length,\n    };\n    const parts = Object.entries(counts).filter(([, n]) => n > 0).map(([kind, n]) => ui.count[kind].replace('{n}', n));\n    summary.textContent = parts.join(' \xB7 ');\n    bar.hidden = !parts.length;\n    document.body.classList.toggle('am-has-reply-bar', parts.length > 0);\n  };\n  document.addEventListener('am-remark-change', () => refreshBar());\n  // Saved remarks are restored by remark.js, which runs after this script in the same <script> element: its data is not there yet.\n  // A microtask runs when that whole element has finished, so the first count includes them.\n  queueMicrotask(() => refreshBar());\n}\n})();\n(() => {\n// Text helpers for remark mode (src/runtime/remark.js): how a marked block is named and quoted.\n// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).\n// A block keeps its mark across `am patch` because the key is its panel, its tag and the start of its text, not its position.\n\nconst collapse = (text) => String(text).replace(/\\s+/g, ' ').trim();\n\n// The start of a block's text with whitespace collapsed: the readable identity of the block.\nfunction fingerprint(text, len = 80) {\n  return collapse(text).slice(0, len);\n}\n\n// What the reply quotes of a block: the start of its text, with an ellipsis when it is cut.\nfunction quote(text, len = 60) {\n  const t = collapse(text);\n  return t.length > len ? `${t.slice(0, len).trimEnd()}\u2026` : t;\n}\n\n// Two blocks with the same text (two identical list items) get the same base key. The n-th one in the page gets \"\\t<n>\" added;\n// a tab cannot be in a fingerprint, which has its whitespace collapsed, so the new key never meets another base key.\nfunction occurrenceKeys(bases) {\n  const seen = new Map();\n  return bases.map((base) => {\n    const n = seen.get(base) ?? 0;\n    seen.set(base, n + 1);\n    return n ? `${base}\\t${n}` : base;\n  });\n}\n\n// Remark mode: the reader turns it on, clicks a block, tags it (suggestion, keep, question, concern) and may add a note.\n// A mark shows as a bar and a note chip inside the block, lives in localStorage like panel comments, and the Reply button carries it\n// back to the agent: reply.js calls window.__amRemarkData, and replyText (reply-text.js) writes the Remarks section.\n(() => {\n  const btn = document.querySelector('[data-am=\"remark\"]');\n  if (!btn) return;\n  const ui = JSON.parse(btn.dataset.ui);\n  const KINDS = ['suggestion', 'keep', 'question', 'concern'];\n  const storeKey = `am-remark:${location.pathname}`;\n  // A page served by `am serve` has no localStorage and the phone may discard its tab; it keeps the marks on the server, in the\n  // same record as the answers (reply.js), so a re-opened page finds them again.\n  const serve = (() => {\n    const { amSave: save, amState: state } = document.body?.dataset ?? {};\n    if (!save) return null;\n    try {\n      return { save, restored: state ? JSON.parse(state) : null };\n    } catch {\n      return { save, restored: null };\n    }\n  })();\n  let saveTimer = null;\n  let pendingPatch = null;\n  const sendSave = (patch) => {\n    fetch(serve.save, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch), keepalive: true })\n      .catch(() => {});\n  };\n  const saveSoon = (patch) => {\n    clearTimeout(saveTimer);\n    pendingPatch = patch;\n    saveTimer = setTimeout(() => {\n      pendingPatch = null;\n      sendSave(patch);\n    }, 400);\n  };\n  // A hidden or closing page sends the change it still holds, before the timer can run.\n  const flushSave = () => {\n    if (!pendingPatch) return;\n    clearTimeout(saveTimer);\n    sendSave(pendingPatch);\n    pendingPatch = null;\n  };\n  document.addEventListener('visibilitychange', () => {\n    if (document.visibilityState === 'hidden') flushSave();\n  });\n  window.addEventListener('pagehide', flushSave);\n  // The one definition of a block a reader can mark: the content under <main>. The page and panel titles are left out, because the\n  // reply reads them as text; a panel has its Comment button.\n  // A $$ block on its own is a div; a $$ formula inside a sentence is a span of its paragraph.\n  const BLOCK = 'main :is(h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,dd,dt,figure,div.am-math-block):not(.am-head *, .am-panel-head *, .am-toc *)';\n  // A click on these does what it always did.\n  const LIVE = '.am-remark-pop, .am-toolbar, a, button, input, textarea, select, label';\n  const blockAt = (target) => (target.closest(LIVE) ? null : target.closest(BLOCK));\n\n  const WJ = new RegExp(String.fromCharCode(0x2060), 'g'); // word joiners of a right-to-left page (src/bidi.js); not part of the draft's text\n  // A narrow horizontal timeline shows its date and title inline (src/themes/base.css). They stay parts of their own, so a block key\n  // does not change with the width of the window (#194).\n  const OWN_BOX = '.am-timeline--h .am-tl-when, .am-timeline--h .am-tl-title';\n  const inlineBox = new WeakMap();\n  const isInline = (el) => {\n    if (!inlineBox.has(el)) inlineBox.set(el, !el.matches(OWN_BOX) && getComputedStyle(el).display.startsWith('inline'));\n    return inlineBox.get(el);\n  };\n  // The text of a block as the reader sees it: separate lines, cells and timeline parts are joined by a space (textContent would run\n  // \"2026\" and \"Ship\" together), and the note chip is not part of it. A formula is one box and reads as the TeX the draft wrote\n  // (src/runtime/math-text.js), not as the MathML tokens.\n  const blockText = (el) => {\n    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);\n    let text = '';\n    let last = null;\n    for (let node = walker.nextNode(); node; node = walker.nextNode()) {\n      if (node.parentElement.closest('.am-mark-note')) continue;\n      let box = formulaOf(node) ?? node.parentElement;\n      while (box !== el && isInline(box)) box = box.parentElement;\n      if (last && box !== last) text += ' ';\n      text += nodeText(node).replace(WJ, '');\n      last = box;\n    }\n    return text;\n  };\n\n  const panelOf = (el) => el.closest('.am-panel')?.id.replace(/^panel-/, '') ?? '';\n  // Block keys, in page order. Built when first needed: a page nobody marked pays nothing.\n  let keys = null;\n  const keyMap = () => {\n    if (!keys) {\n      const blocks = [...document.querySelectorAll(BLOCK)];\n      const ids = occurrenceKeys(blocks.map((el) => `${panelOf(el)}|${el.localName}|${fingerprint(blockText(el))}`));\n      keys = new Map(blocks.map((el, i) => [el, ids[i]]));\n    }\n    return keys;\n  };\n\n  const load = () => {\n    const restored = serve?.restored?.remark;\n    if (Array.isArray(restored)) return restored.filter((m) => typeof m?.key === 'string' && KINDS.includes(m.kind));\n    try {\n      const saved = JSON.parse(localStorage.getItem(storeKey));\n      return Array.isArray(saved) ? saved.filter((m) => typeof m?.key === 'string' && KINDS.includes(m.kind)) : [];\n    } catch {\n      return [];\n    }\n  };\n  // A mark whose block is gone from the page stays stored (it may return with `am patch`); it is neither painted nor sent.\n  const marks = new Map(load().map((m) => [m.key, { key: m.key, kind: m.kind, note: String(m.note ?? '') }]));\n  // Kind and note of a popover closed without Save, by block key, until the page reloads (see open below).\n  const drafts = new Map();\n  const clearBtn = document.createElement('button');\n  clearBtn.type = 'button';\n  clearBtn.className = 'am-btn am-btn--remark-clear';\n  clearBtn.textContent = ui.clear;\n  // Clear all drops saved marks and drafts, so it shows while either exists.\n  const toClear = () => marks.size + drafts.size;\n  const showClear = () => { clearBtn.hidden = toClear() === 0; };\n  btn.insertAdjacentElement('afterend', clearBtn);\n  let clearTimer = null;\n  let clearArmed = false;\n  const resetClear = () => {\n    if (clearTimer !== null) clearTimeout(clearTimer);\n    clearTimer = null;\n    clearArmed = false;\n    clearBtn.classList.remove('is-armed');\n    clearBtn.textContent = ui.clear;\n    showClear();\n  };\n  const armClear = () => {\n    clearArmed = true;\n    clearBtn.classList.add('is-armed');\n    clearBtn.textContent = ui.clearConfirm.replace('{n}', toClear());\n    clearTimer = setTimeout(resetClear, 4000);\n  };\n  clearBtn.addEventListener('click', () => {\n    if (!clearArmed) {\n      armClear();\n      return;\n    }\n    for (const el of document.querySelectorAll('.am-mark')) unpaint(el);\n    marks.clear();\n    // A draft is a remark the reader has not saved yet; Clear all drops it too, so no block reopens with an old kind.\n    drafts.clear();\n    try {\n      localStorage.removeItem(storeKey);\n    } catch {\n      // Storage may be off (private window, a sandboxed page); the in-memory marks still clear.\n    }\n    if (serve) saveSoon({ remark: [] });\n    resetClear();\n    document.dispatchEvent(new Event('am-remark-change'));\n  });\n  const save = () => {\n    try {\n      localStorage.setItem(storeKey, JSON.stringify([...marks.values()]));\n    } catch {\n      // Storage may be off (private window, a sandboxed page); marks then last until the page closes.\n    }\n    if (serve) saveSoon({ remark: [...marks.values()] });\n    // The reply bar (reply.js) shows the number of marks.\n    document.dispatchEvent(new Event('am-remark-change'));\n    showClear();\n  };\n\n  const chip = (el, mark) => {\n    const note = document.createElement(el.localName === 'table' ? 'caption' : 'span');\n    note.className = 'am-mark-note';\n    const kind = document.createElement('b');\n    kind.textContent = ui.kinds[mark.kind];\n    note.append(kind, mark.note ? ` ${mark.note}` : '');\n    return note;\n  };\n  const clearChip = (el) => el.querySelector(':scope > .am-mark-note')?.remove();\n  const paint = (el, mark) => {\n    clearChip(el);\n    el.classList.add('am-mark');\n    el.dataset.kind = mark.kind;\n    // Inside the block, so a list item stays a child of its list. A table takes it as its caption; a list item with a sub-list shows\n    // it under its own text, before the sub-list.\n    const sub = el.querySelector(':scope > ul, :scope > ol');\n    if (el.localName === 'table') el.prepend(chip(el, mark));\n    else if (sub) sub.before(chip(el, mark));\n    else el.append(chip(el, mark));\n  };\n  const unpaint = (el) => {\n    clearChip(el);\n    el.classList.remove('am-mark');\n    delete el.dataset.kind;\n  };\n  showClear();\n  if (marks.size) for (const [el, key] of keyMap()) if (marks.has(key)) paint(el, marks.get(key));\n\n  // The popover edits one block. Save stays off until a kind is picked, and a hint says so. 1\u20134 pick a kind from the keyboard and\n  // move to the note; Ctrl / Cmd + Enter saves. A popover closed without Save keeps its kind and note as a draft for that block until the page reloads.\n  const pop = document.createElement('div');\n  pop.className = 'am-remark-pop';\n  pop.hidden = true;\n  pop.setAttribute('role', 'dialog');\n  pop.setAttribute('aria-label', ui.button);\n  document.body.append(pop);\n  let opener = null;\n  let anchor = null;\n  let keepDraft = null;\n  const close = (restoreFocus) => {\n    if (pop.hidden) return;\n    keepDraft?.();\n    keepDraft = null;\n    pop.hidden = true;\n    if (restoreFocus) (opener?.isConnected && opener !== document.body ? opener : btn).focus();\n  };\n  const place = () => {\n    const rect = anchor.getBoundingClientRect();\n    const rtl = getComputedStyle(document.documentElement).direction === 'rtl';\n    const x = rtl ? rect.right - pop.offsetWidth : rect.left;\n    // Under the block; a block taller than the window gets the popover at the bottom of the window instead.\n    const y = Math.min(rect.bottom + 6, window.innerHeight - pop.offsetHeight - 8);\n    pop.style.left = `${window.scrollX + Math.min(Math.max(8, x), window.innerWidth - pop.offsetWidth - 8)}px`;\n    pop.style.top = `${window.scrollY + Math.max(8, y)}px`;\n  };\n  const make = (tag, props) => Object.assign(document.createElement(tag), props);\n  const open = (el) => {\n    const key = keyMap().get(el);\n    const mark = marks.get(key);\n    const draft = drafts.get(key);\n    let kind = draft?.kind ?? mark?.kind ?? '';\n    opener = document.activeElement;\n    anchor = el;\n\n    const note = make('textarea', { rows: 2, placeholder: ui.hint, value: draft?.note ?? mark?.note ?? '' });\n    note.setAttribute('aria-label', ui.hint);\n    const keep = make('button', { type: 'button', className: 'am-btn', textContent: ui.save, disabled: !kind });\n    const need = make('span', { className: 'am-remark-need', textContent: ui.need, hidden: Boolean(kind) });\n    keepDraft = () => {\n      if (kind || note.value.trim()) drafts.set(key, { kind, note: note.value });\n      else drafts.delete(key);\n      showClear();\n    };\n    const done = () => { drafts.delete(key); keepDraft = null; showClear(); };\n    keep.addEventListener('click', () => {\n      done();\n      const saved = { key, kind, note: note.value.trim() };\n      marks.set(key, saved);\n      save();\n      paint(el, saved);\n      close(true);\n    });\n    const actions = make('div', { className: 'am-remark-actions' });\n    actions.append(keep);\n    if (mark) {\n      const drop = make('button', { type: 'button', className: 'am-btn', textContent: ui.remove });\n      drop.addEventListener('click', () => {\n        done();\n        marks.delete(key);\n        save();\n        unpaint(el);\n        close(true);\n      });\n      actions.append(drop);\n    }\n    const choose = (k) => {\n      kind = k;\n      for (const other of kindBtns) other.setAttribute('aria-pressed', String(other.dataset.kind === k));\n      keep.disabled = false;\n      need.hidden = true;\n    };\n    const kindBtns = KINDS.map((k, i) => {\n      const kb = make('button', { type: 'button', className: 'am-remark-kind', textContent: ui.kinds[k] });\n      kb.dataset.kind = k;\n      kb.dataset.n = i + 1;\n      kb.setAttribute('aria-pressed', String(k === kind));\n      kb.addEventListener('click', () => choose(k));\n      return kb;\n    });\n    // Ctrl / Cmd + Enter presses Save (nothing while Save waits for a kind). A digit types into the note, so it picks a kind\n    // only while the focus is outside the note.\n    pop.onkeydown = (e) => {\n      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) {\n        e.preventDefault();\n        if (!keep.disabled) keep.click();\n        return;\n      }\n      if (e.target === note || e.ctrlKey || e.metaKey || e.altKey || !/^[1-4]$/.test(e.key)) return;\n      e.preventDefault();\n      choose(KINDS[Number(e.key) - 1]);\n      note.focus();\n    };\n    actions.append(need);\n    pop.replaceChildren(make('div', { className: 'am-remark-kinds' }), note, actions);\n    pop.firstChild.append(...kindBtns);\n    pop.hidden = false;\n    place();\n    (kindBtns.find((b) => b.dataset.kind === kind) ?? kindBtns[0]).focus({ preventScroll: true });\n  };\n\n  // Picking works only while remark mode is on. A click on a marked block edits its mark, on a plain block starts one.\n  // The block under the pointer gets an outline: the same blockAt decides what is outlined and what a click picks.\n  let hover = null;\n  const track = (e) => {\n    const el = e.type === 'mouseout' && e.relatedTarget === null ? null : blockAt(e.target);\n    if (el === hover) return;\n    hover?.classList.remove('am-remark-hover');\n    hover = el;\n    hover?.classList.add('am-remark-hover');\n  };\n  const pick = (e) => {\n    const el = blockAt(e.target);\n    if (el) open(el);\n  };\n  // The keyboard picks too: while the mode is on, every block takes focus with Tab, and Enter or Space opens its popover. A block\n  // that already had a tabindex keeps it; only the ones the mode added lose it again.\n  const pickKey = (e) => {\n    if ((e.key !== 'Enter' && e.key !== ' ') || e.ctrlKey || e.metaKey || e.altKey || !e.target.hasAttribute?.('data-am-pick')) return;\n    e.preventDefault();\n    open(e.target);\n  };\n  const focusable = (on) => {\n    if (!on && !keys) return; // the mode starts off: a page nobody marked builds no block keys\n    for (const el of keyMap().keys()) {\n      if (on && !el.hasAttribute('tabindex')) {\n        el.tabIndex = 0;\n        el.setAttribute('data-am-pick', '');\n      } else if (!on && el.hasAttribute('data-am-pick')) {\n        el.removeAttribute('tabindex');\n        el.removeAttribute('data-am-pick');\n      }\n    }\n  };\n  const setMode = (on) => {\n    btn.classList.toggle('is-on', on);\n    btn.setAttribute('aria-pressed', String(on));\n    const toggle = on ? 'addEventListener' : 'removeEventListener';\n    document.body[toggle]('click', pick);\n    document.body[toggle]('mouseover', track);\n    document.body[toggle]('mouseout', track);\n    document.body[toggle]('keydown', pickKey);\n    focusable(on);\n    if (!on) {\n      track({ type: 'mouseout', relatedTarget: null });\n      close(false);\n    }\n  };\n  btn.addEventListener('click', () => setMode(btn.getAttribute('aria-pressed') !== 'true'));\n  document.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape') close(true);\n  });\n  // A click outside the popover closes it; the same click may then start another mark.\n  document.addEventListener('click', (e) => {\n    if (!pop.hidden && !pop.contains(e.target)) close(false);\n  }, true);\n  setMode(false);\n\n  // What the Reply button reads: the marked blocks that are on the page, in page order.\n  window.__amRemarkData = () => {\n    if (!marks.size) return [];\n    const live = [];\n    for (const [el, key] of keyMap()) {\n      const mark = marks.get(key);\n      if (mark) live.push({ panel: panelOf(el), quote: quote(blockText(el)), kind: mark.kind, note: mark.note });\n    }\n    return live;\n  };\n})();\n})();\n(() => {\n// Pure planner for justified (\"photo wall\") rows on sheet pages. No DOM access.\n//\n// This file must stay inlinable into the page script: top-level declarations only, no imports, and the exports are\n// `planLayout` and the constants the DOM adapter shares (STEP, MAX_SCALE, MIN_SCALE). The page build strips the `export ` keyword,\n// and test/layout-plan.test.js checks that this still works.\n//\n// planLayout({ width, gap, cols, panels }) -> { rows: [{ columns: [{ panels: [index, ...], width }], height }] }\n//\n// Input (all lengths in px):\n//   width   container width\n//   gap     space between columns, and between two panels stacked in one column\n//   cols    most columns in one row (the planner never uses more than MAX_COLUMNS, but spans stay shares of `cols`)\n//   panels  one entry per panel, in reading order:\n//     samples   [{ w, h }] panel height at sampled widths, ascending by w (heights between samples are interpolated)\n//     minWidth  narrowest feasible width (clamped to `width`)\n//     maxWidth  widest useful width; beyond it the panel only gains empty space (default: no limit)\n//     natural   natural diagram width for a diagram-only panel (default: none)\n//     pad       panel width not used by the diagram (padding and border; default 0)\n//     span      the author's width hint in grid columns (default 1); span >= cols keeps the panel alone in its row\n//\n// Output: { rows, maxScale }. Rows are in reading order; a row is a list of columns (at most `cols`); a column holds one panel or two\n// consecutive panels, stacked. For integer inputs the column widths plus the gaps between them equal `width`.\n// Rows are chosen by dynamic programming over break points; widths by a search in STEP px steps. Cost per row:\n//   H = tallest column; waste = sum((H - columnHeight) * columnWidth) + sum over diagrams wider than maxWidth of (w - maxWidth) * h\n//   dev = sum(((w - preferred) / oneColumn)^2) + SCALE_WEIGHT * sum over diagrams of (ln(scale) / ln(MAX_SCALE))^2\n//   cost = waste / 1000 + PREF_WEIGHT * dev * H\n// Scale band: diagrams on one page stay at similar sizes. With the result's `maxScale` as the diagram size limit, a diagram is\n// shown at scale min(maxScale, (width - pad) / natural). The planner tries a few bands [lo, lo * BAND_RATIO] (lo in BAND_LOS) and\n// keeps the cheapest plan in which no diagram is narrower than scale lo and none is shown above the band's top, so the largest and\n// smallest diagram scale on the page differ by at most BAND_RATIO. A panel wider than its diagram's top size keeps the diagram at\n// that size, and the page script must set the diagram's max-width to natural * maxScale. The band starts no higher than the\n// largest scale the page allows the least roomy diagram, so one wide diagram lowers the band for the others.\n// If no band is feasible the plan is made without a band (maxScale = MAX_SCALE); if no plan fits (or the input is unusable) the\n// result is a single column: one panel per row at the full width.\n\nconst STEP = 10;\nconst MAX_SCALE = 1.25;\nconst MIN_SCALE = 0.75; // the narrowest a diagram is shown, as a share of its natural width\nconst MAX_COLUMNS = 6; // rows with more columns are unreadable, and the search grows steeply with the column count\nconst BAND_RATIO = 1.25; // the largest and smallest diagram scale on a page differ by at most this\nconst BAND_LOS = [MIN_SCALE, 0.85, 0.95, 1]; // lower ends tried for the band; lo * BAND_RATIO is the upper end (1.25 means no upper limit)\nconst SCALE_WEIGHT = 3;\nconst PREF_WEIGHT = 0.15;\n\nfunction heightAt(samples, w) {\n  const i = samples.findIndex((s) => s.w >= w);\n  if (i === -1) return samples[samples.length - 1].h;\n  if (i === 0) return samples[0].h;\n  const a = samples[i - 1];\n  const b = samples[i];\n  return a.h + ((b.h - a.h) * (w - a.w)) / (b.w - a.w);\n}\n\n// Every way to split `len` consecutive panels into columns of 1 or 2 panels, as lists of column sizes.\nfunction splits(len) {\n  if (len === 0) return [[]];\n  return [1, 2].filter((k) => k <= len).flatMap((k) => splits(len - k).map((rest) => [k, ...rest]));\n}\n\nfunction singleColumn(width, panels) {\n  return { rows: panels.map((_, i) => ({ columns: [{ panels: [i], width }], height: 0 })) };\n}\n\nfunction planLayout({ width, gap = 0, cols = 3, panels }) {\n  const usable = Number.isFinite(width) && width > 0 && panels.every((p) => Array.isArray(p.samples) && p.samples.length > 0);\n  if (!usable) return singleColumn(width, panels);\n\n  // `cols` stays the unit of the author's spans; no row gets more than MAX_COLUMNS columns however large `cols` is.\n  const maxColumns = Math.min(cols, MAX_COLUMNS);\n  const oneColumn = Math.max(1, (width - gap * (cols - 1)) / cols);\n  // Per-panel limits. With a band [lo, lo * BAND_RATIO], a diagram is no narrower than scale lo and shown at most at the top of the\n  // band: a wider panel keeps it at that size and gains empty space, which the cost counts as waste.\n  const prepare = (lo) => panels.map((p) => {\n    const pad = p.pad ?? 0;\n    const diagram = lo > 0 && p.natural > 0;\n    const scaleCap = diagram ? Math.min(MAX_SCALE, lo * BAND_RATIO) : MAX_SCALE;\n    return {\n      ...p,\n      minWidth: Math.min(width, Math.max(Math.ceil(p.minWidth || 0), diagram ? Math.ceil(p.natural * lo + pad) : 0)),\n      maxWidth: Math.min(p.maxWidth ?? Infinity, diagram ? p.natural * scaleCap + pad : Infinity),\n      scaleCap,\n      pad,\n      preferred: Math.min(width, (p.span ?? 1) * oneColumn + ((p.span ?? 1) - 1) * gap),\n      alone: (p.span ?? 1) >= cols,\n    };\n  });\n  let info = prepare(0);\n  // Beyond its maxWidth a panel only gains empty space, so its height stops changing there (matters when a band lowers maxWidth).\n  const heightOf = (p, w) => heightAt(p.samples, Math.min(w, p.maxWidth));\n  const columnHeight = (col, w) => col.reduce((h, k) => h + heightOf(info[k], w), 0) + gap * (col.length - 1);\n\n  function bestColumns(columns) {\n    const avail = width - gap * (columns.length - 1);\n    const mins = columns.map((c) => Math.max(...c.map((k) => info[k].minWidth)));\n    const minsFrom = mins.map((_, n) => mins.slice(n).reduce((s, w) => s + w, 0));\n    if (minsFrom[0] > avail) return null;\n    let best = null;\n    const evaluate = (ws) => {\n      const hs = ws.map((w, n) => columnHeight(columns[n], w));\n      const H = Math.max(...hs);\n      let waste = 0;\n      let dev = 0;\n      ws.forEach((w, n) => {\n        waste += (H - hs[n]) * w;\n        for (const k of columns[n]) {\n          const p = info[k];\n          if (w > p.maxWidth) waste += (w - p.maxWidth) * heightOf(p, w);\n          dev += ((w - p.preferred) / oneColumn) ** 2;\n          if (p.natural > 0) {\n            const scale = Math.min(p.scaleCap, Math.max(w - p.pad, 1) / p.natural);\n            dev += SCALE_WEIGHT * (Math.log(scale) / Math.log(MAX_SCALE)) ** 2;\n          }\n        }\n      });\n      const cost = waste / 1000 + PREF_WEIGHT * dev * H;\n      if (!best || cost < best.cost) best = { cost, ws, height: H, columns };\n    };\n    const choose = (n, used, ws) => {\n      if (n === columns.length - 1) {\n        const w = avail - used;\n        if (w >= mins[n]) evaluate([...ws, w]);\n        return;\n      }\n      for (let w = mins[n]; used + w + minsFrom[n + 1] <= avail; w += STEP) choose(n + 1, used + w, [...ws, w]);\n    };\n    choose(0, 0, []);\n    return best;\n  }\n\n  // Best columns for one row of panels i..j.\n  function bestRow(i, j) {\n    if (j > i && info.slice(i, j + 1).some((p) => p.alone)) return null;\n    let best = null;\n    for (const split of splits(j - i + 1)) {\n      if (split.length > maxColumns) continue;\n      let next = i;\n      const columns = split.map((size) => Array.from({ length: size }, () => next++));\n      const r = bestColumns(columns);\n      if (r && (!best || r.cost < best.cost)) best = r;\n    }\n    return best;\n  }\n\n  // Row breaks in reading order, for the band set up in `info`. A row holds at most 2 * maxColumns panels. Null if nothing fits.\n  function solve() {\n    const n = panels.length;\n    const total = Array(n + 1).fill(Infinity);\n    const from = Array(n + 1).fill(-1);\n    const chosen = Array(n + 1).fill(null);\n    total[0] = 0;\n    for (let j = 1; j <= n; j++) {\n      for (let i = Math.max(0, j - 2 * maxColumns); i < j; i++) {\n        if (total[i] === Infinity) continue;\n        const r = bestRow(i, j - 1);\n        if (r && total[i] + r.cost < total[j]) {\n          total[j] = total[i] + r.cost;\n          from[j] = i;\n          chosen[j] = r;\n        }\n      }\n    }\n    if (total[n] === Infinity) return null;\n    const rows = [];\n    for (let j = n; j > 0; j = from[j]) {\n      const r = chosen[j];\n      rows.unshift({ columns: r.columns.map((panelsInColumn, c) => ({ panels: panelsInColumn, width: r.ws[c] })), height: r.height });\n    }\n    return { rows, cost: total[n] };\n  }\n\n  let best = null;\n  const diagrams = panels.filter((p) => p.natural > 0);\n  if (diagrams.length > 1) {\n    // No diagram can be shown larger than the page allows, so the band cannot start above the smallest of those limits.\n    const reach = Math.min(...diagrams.map((p) => Math.min(MAX_SCALE, Math.max(width - (p.pad ?? 0), 1) / p.natural)));\n    for (const lo of new Set([...BAND_LOS.filter((x) => x < reach), reach])) {\n      info = prepare(lo);\n      const r = solve();\n      if (r && (!best || r.cost < best.cost)) best = { ...r, maxScale: Math.min(MAX_SCALE, lo * BAND_RATIO) };\n    }\n    info = prepare(0);\n  }\n  best ??= solve();\n  return best ? { rows: best.rows, maxScale: best.maxScale ?? MAX_SCALE } : singleColumn(width, panels);\n}\n\n// DOM adapter for the sheet's justified (\"photo wall\") layout. Not a module: compose.js puts it after src/runtime/layout-plan.js\n// (which defines planLayout and the shared STEP, MAX_SCALE, MIN_SCALE) inside one function scope of the page script.\n//\n// It measures every panel at sampled widths, asks planLayout for rows and column widths, and applies them with flexbox.\n// The rendered HTML keeps the plain CSS grid: with JavaScript off, at the single-column breakpoint, or while printing, the grid is what\n// shows (the planned widths belong to the screen width, so print never gets a mix of the two); after printing the layout comes back.\n\n// A diagram is never drawn under MIN_SCALE of its natural width, the floor the planner keeps: below it the text is too small to read,\n// so its figure scrolls sideways instead. This covers what the planner does not size: the plain grid, a phone, a one-panel page and a\n// panel that holds more than the diagram. The svg width follows the reader's text size (page.js), so the floor follows am-scale;\n// restore() puts it back after resetting the inline styles. Printing drops it (base.css).\nconst floorDiagrams = () => {\n  for (const svg of document.querySelectorAll('.am-diagram:not(.am-lightbox-canvas) > svg')) {\n    const width = Number(svg.getAttribute('width'));\n    if (width > 0) svg.style.minWidth = `${Math.floor(width * MIN_SCALE)}px`;\n  }\n};\nfloorDiagrams();\naddEventListener('am-scale', floorDiagrams);\n\nconst grid = document.querySelector('.am-grid');\nconst panels = grid ? [...grid.children].filter((el) => el.classList.contains('am-panel')) : [];\n\nif (panels.length > 1) {\n  const SINGLE_COLUMN = '(max-width: 760px)'; // the single-column breakpoint in src/themes/base.css\n  const TWO_COLUMNS = '(max-width: 1100px)'; // below this the CSS grid has two columns\n  const SAMPLE_STEP = 20; // width sampling step, px; the planner interpolates between samples\n  // The width floors are text sizes (px at scale 1). They take the page scale on every pass, so a runtime change of --am-scale re-plans.\n  const TEXT_MIN = 260; // text keeps at least about 16 CJK characters per line\n  const TABLE_COL_MIN = 96; // per table column, px\n  const TABLE_COL_COMFORT = 220; // a table column this wide reads three or four words per line\n  const TABLE_WORD_MAX = 160; // a longer word (an id, a path) counts as this wide and may break inside its cell when room is short\n  const KV_COL_MIN = 120; // per key-value column, px: a value of two short words stays on one line\n  const DIAGRAM_MIN = 160;\n  const RESIZE_DELAY = 150;\n  const pageScale = () => {\n    const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--am-scale'));\n    return Number.isFinite(scale) && scale > 0 ? scale : 1;\n  };\n  const OVERFLOWING = '.am-table-wrap, .am-diagram, .am-annot-scroll, pre';\n\n  // The first-row cells of each table carry the column widths fitTables() sets, so restore() resets them too.\n  const tables = [...grid.querySelectorAll('.am-table-wrap > table')];\n  const headCells = (table) => [...(table.rows[0]?.cells ?? [])];\n  const original = new Map([grid, ...panels, ...grid.querySelectorAll('.am-diagram > svg'), ...tables.flatMap(headCells)].map((el) => [el, el.getAttribute('style')]));\n  const restoreStyle = (el) => (original.get(el) === null ? el.removeAttribute('style') : el.setAttribute('style', original.get(el)));\n\n  // Back to the plain grid markup and styles.\n  const restore = () => {\n    for (const box of grid.querySelectorAll(':scope > .am-col')) box.replaceWith(...box.children);\n    for (const el of original.keys()) restoreStyle(el);\n    for (const table of tables) table.classList.remove('am-table-fit');\n    floorDiagrams();\n  };\n\n  // The author's width hint, rendered as data-span only when the author wrote one. The inline grid-column is the no-JavaScript fallback\n  // and may hold spans the server added, so it is never read here.\n  const spanHint = (el) => Number(el.dataset.span) || 1;\n  const diagramOnly = (el) => {\n    const body = el.querySelector(':scope > .am-panel-body');\n    return body && body.children.length === 1 ? body.querySelector(':scope > .am-diagram > svg') : null;\n  };\n  const naturalWidth = (svg) => Number(svg.getAttribute('width')) || 0;\n\n  // The width each column of a table reads well at: its natural width, but no wider than TABLE_COL_COMFORT unless its longest word\n  // needs more. Below it the cells wrap one word per line, so a panel with a table is not planned narrower than the sum, and\n  // fitTables() keeps each column at its share (the browser would otherwise give the room to the longest column).\n  // A column's floor is its longest word, but no more than TABLE_WORD_MAX: a long id would otherwise hold its column at full width and\n  // leave a prose column one word per line. fitTables() lets such a word break (am-table-fit) when the table is short of room.\n  const columnWidths = new Map();\n  function comfortableWidth(table, scale) {\n    const saved = table.getAttribute('style');\n    const columns = (width) => {\n      table.style.width = width;\n      return headCells(table).map((cell) => cell.getBoundingClientRect().width);\n    };\n    const most = columns('max-content');\n    const unbroken = columns('min-content');\n    const least = unbroken.map((w) => Math.min(w, TABLE_WORD_MAX * scale));\n    if (saved === null) table.removeAttribute('style');\n    else table.setAttribute('style', saved);\n    // A max-content column comes out a fraction under its text in Chrome, enough to wrap the last word, so it gets one pixel more.\n    const want = most.map((w, i) => Math.min(Math.ceil(w) + 1, Math.max(least[i], TABLE_COL_COMFORT * scale)));\n    // unbroken: each column's longest word. A column the browser lays out is at least that wide, whatever its min-width, so\n    // fitTables() turns am-table-fit on when the columns would not fit at those widths, even if the capped widths do.\n    columnWidths.set(table, { least, want, unbroken });\n    return want.reduce((sum, w) => sum + w, 0);\n  }\n\n  // After the layout: each column gets at least its comfortable width, scaled down toward its longest word when the panel came out\n  // narrower than planned (a page narrower than the table), so a table scrolls sideways only when even its longest words do not fit.\n  function fitTables() {\n    for (const [table, { least, want, unbroken }] of columnWidths) {\n      // Each width is rounded up to a whole pixel (a column a fraction too narrow wraps its last word), so keep a pixel per column spare.\n      const room = table.parentElement.clientWidth - want.length;\n      const low = least.reduce((s, w) => s + w, 0);\n      const high = want.reduce((s, w) => s + w, 0);\n      const k = high > room ? Math.max(0, (room - low) / (high - low || 1)) : 1;\n      const widths = want.map((w, i) => Math.ceil(least[i] + (w - least[i]) * k));\n      headCells(table).forEach((cell, i) => { cell.style.minWidth = `${widths[i]}px`; });\n      // Without am-table-fit a column holds its longest word, so a long id can widen the table past the room the widths left.\n      const whole = widths.reduce((s, w, i) => s + Math.max(w, unbroken[i]), 0);\n      table.classList.toggle('am-table-fit', high > room || whole > room);\n    }\n  }\n\n  // Height (and, for panels with tables or code, the narrowest width without sideways scrolling) at sampled widths.\n  // Only one panel is displayed while it is measured, so each width change lays out that panel alone.\n  function measure(width) {\n    const scale = pageScale();\n    grid.style.display = 'block';\n    for (const el of panels) {\n      el.style.display = 'none';\n      el.style.boxSizing = 'border-box';\n      for (const svg of el.querySelectorAll('.am-diagram > svg')) {\n        svg.style.width = '100%';\n        svg.style.maxWidth = `${naturalWidth(svg) * MAX_SCALE}px`;\n      }\n    }\n    const info = panels.map((el) => {\n      const svg = diagramOnly(el);\n      const svgs = [...el.querySelectorAll('.am-diagram > svg')];\n      const scrollers = el.querySelectorAll(OVERFLOWING);\n      const tableCols = Math.max(0, ...[...el.querySelectorAll('table tr:first-child')].map((tr) => tr.children.length));\n      el.style.display = '';\n      el.style.width = `${width}px`;\n      const pad = svg ? el.offsetWidth - svg.parentElement.clientWidth : 0;\n      const natural = svg ? naturalWidth(svg) : 0;\n      const shrunk = Math.max(0, ...svgs.map((s) => naturalWidth(s) * MIN_SCALE)) + (svg ? pad : 34);\n      const tableFloors = [...el.querySelectorAll('.am-table-wrap > table')].map((t) => comfortableWidth(t, scale) + el.offsetWidth - t.parentElement.clientWidth);\n      // A key-value grid gets the same care: the room a table gains must not squeeze a neighbouring grid to one word per line.\n      const kvs = [...el.querySelectorAll('.am-kv')].map((kv) => (Number(kv.style.getPropertyValue('--kv-cols')) || 1) * KV_COL_MIN * scale + el.offsetWidth - kv.clientWidth);\n      const floor = svg ? Math.max(DIAGRAM_MIN * scale, natural * MIN_SCALE + pad) : Math.max(TEXT_MIN * scale, shrunk, tableCols * TABLE_COL_MIN * scale + 34, ...tableFloors, ...kvs);\n      const from = Math.min(width, Math.floor(floor / STEP) * STEP);\n      const samples = [];\n      let fits = null;\n      for (let w = from; ; w += SAMPLE_STEP) {\n        w = Math.min(w, width);\n        el.style.width = `${w}px`;\n        if (fits === null && !svg && scrollers.length && ![...scrollers].some((s) => s.scrollWidth > s.clientWidth + 1)) fits = w;\n        samples.push({ w, h: el.offsetHeight });\n        if (w === width) break;\n      }\n      el.style.display = 'none';\n      return {\n        samples,\n        minWidth: svg ? floor : Math.max(floor, fits ?? (scrollers.length ? width : 0)),\n        maxWidth: svg ? natural * MAX_SCALE + pad : Infinity,\n        natural,\n        pad,\n        span: spanHint(el),\n      };\n    });\n    for (const el of panels) {\n      el.style.display = '';\n      el.style.width = '';\n    }\n    return info;\n  }\n\n  // Each column gets a fixed width. A row adds up to the full width, so flex-wrap breaks rows by itself.\n  // Stacked panels go into a column wrapper whose last panel absorbs the extra height.\n  function apply(plan, gap) {\n    grid.style.display = 'flex';\n    grid.style.flexWrap = 'wrap';\n    grid.style.alignItems = 'stretch';\n    grid.style.gap = `${gap}px`;\n    for (const el of panels) {\n      el.style.gridColumn = '';\n      el.style.gridRow = '';\n      el.style.flex = '0 0 auto';\n    }\n    for (const row of plan.rows) {\n      for (const col of row.columns) {\n        const width = `${col.width}px`;\n        if (col.panels.length === 1) {\n          panels[col.panels[0]].style.width = width;\n          continue;\n        }\n        const box = document.createElement('div');\n        box.className = 'am-col';\n        box.style.cssText = `width:${width};flex:0 0 auto;display:flex;flex-direction:column;gap:${gap}px`;\n        panels[col.panels[0]].before(box);\n        for (const k of col.panels) {\n          panels[k].style.width = '';\n          box.append(panels[k]);\n        }\n        panels[col.panels[col.panels.length - 1]].style.flex = '1 1 auto';\n      }\n    }\n  }\n\n  // Diagram-only panels show their diagram at most at the top of the page's scale band; a wider panel gains empty space instead.\n  function capDiagrams(maxScale) {\n    for (const el of panels) {\n      const svg = diagramOnly(el);\n      if (svg) svg.style.maxWidth = `${naturalWidth(svg) * maxScale}px`;\n    }\n  }\n\n  const containerWidth = () => Math.floor(grid.getBoundingClientRect().width);\n\n  function justify() {\n    if (printing || printQuery.matches) return;\n    try {\n      // A vertical scrollbar can appear or vanish once the rows change height; plan again if the width moved.\n      // A later pass plans for the width the previous layout left, not the grid's: restoring the grid first would bring back the\n      // grid's scrollbar, so a page whose grid scrolls and whose rows do not (or the reverse) would never settle.\n      let planned = -1;\n      let laidOut = NaN;\n      for (let pass = 0; pass < 3 && planned !== laidOut; pass++) {\n        restore();\n        if (matchMedia(SINGLE_COLUMN).matches) return;\n        planned = pass === 0 ? containerWidth() : laidOut;\n        const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;\n        const cols = Math.max(1, Number(getComputedStyle(grid).getPropertyValue('--cols')) || 3);\n        const plan = planLayout({ width: planned, gap, cols: matchMedia(TWO_COLUMNS).matches ? Math.min(cols, 2) : cols, panels: measure(planned) });\n        apply(plan, gap);\n        capDiagrams(plan.maxScale);\n        fitTables();\n        laidOut = containerWidth();\n      }\n      // The width never settled: columns planned for another width would overflow or leave gaps, so show the plain grid.\n      if (planned !== laidOut) restore();\n    } catch {\n      restore();\n    }\n  }\n\n  // Printing: back to the plain grid (spans and all), and the layout again afterwards. Browsers disagree on which of the\n  // `beforeprint` event and the print media query change fires first, or at all, so listen to both; both are idempotent.\n  // While `printing` is set (beforeprint to afterprint) justify() does nothing, so a late resize cannot bring flex widths into the print layout.\n  let printing = false;\n  const printQuery = matchMedia('print');\n  let timer = 0;\n  const later = () => {\n    clearTimeout(timer);\n    timer = setTimeout(justify, RESIZE_DELAY);\n  };\n  const toPrint = () => {\n    clearTimeout(timer);\n    restore();\n  };\n  justify();\n  addEventListener('resize', later);\n  // A reader's text size changes every panel's text widths and heights, so the sheet is planned again like a resize.\n  addEventListener('am-scale', later);\n  addEventListener('beforeprint', () => {\n    printing = true;\n    toPrint();\n  });\n  addEventListener('afterprint', () => {\n    printing = false;\n    later();\n  });\n  printQuery.addEventListener('change', (e) => (e.matches ? toPrint() : later()));\n  // Late changes to panel heights: web fonts arriving, and images inside the grid finishing their load (load does not bubble, so capture it).\n  document.fonts?.ready.then(later);\n  grid.addEventListener('load', later, true);\n  // Switching theme changes paddings and fonts, hence panel heights.\n  document.querySelector('[data-am=\"theme\"]')?.addEventListener('click', later);\n}\n})();\n// The outline rail of a doc page (src/templates/doc.js): the markup already works without a script, <details> opens the list and the\n// links jump. This adds the hover dwell, the open direction, the keys, the tap outside and the marking of the current section.\n(() => {\n  const nav = document.querySelector('nav.am-toc');\n  const box = nav && nav.querySelector('details.am-outline');\n  if (!box) return;\n  const sum = box.querySelector('summary');\n  const links = Array.from(box.querySelectorAll('.am-outline-list a'));\n  const ticks = Array.from(box.querySelectorAll('.am-tick'));\n  const LIST_W = 240; // keep in step with .am-outline-list in src/themes/base.css\n  const EDGE = 10; // the 6px gap to the rail plus a margin to the viewport edge\n  let current = '';\n  let byHover = false;\n  let dwell = 0;\n  let leave = 0;\n\n  // Open away from the body when the room outside the rail fits the list; otherwise over the body. Never past the viewport.\n  const place = () => {\n    const r = sum.getBoundingClientRect();\n    const right = r.left + r.width / 2 > innerWidth / 2;\n    const room = right ? innerWidth - r.right : r.left;\n    nav.dataset.flow = room >= Math.min(LIST_W, innerWidth - 48) + EDGE ? 'out' : 'in';\n  };\n  const setOpen = (open) => {\n    if (open) place();\n    box.open = open;\n    if (!open) byHover = false;\n  };\n  const peek = (tick) => ticks.forEach((t) => t.classList.toggle('is-peek', t === tick));\n  const currentLink = () => links.find((a) => a.getAttribute('aria-current') === 'true') || links[0];\n\n  const mark = (id) => {\n    current = id;\n    ticks.forEach((t) => t.classList.toggle('is-current', t.dataset.id === id));\n    links.forEach((a) => {\n      if (a.getAttribute('href') === `#panel-${id}`) a.setAttribute('aria-current', 'true');\n      else a.removeAttribute('aria-current');\n    });\n  };\n  const sections = ticks.map((t) => document.getElementById(`panel-${t.dataset.id}`)).filter(Boolean);\n  if (sections.length) mark(sections[0].id.slice(6));\n  if (sections.length && 'IntersectionObserver' in window) {\n    // A thin band a third of the way down the viewport: the section across it is the one being read.\n    const seen = new Set();\n    const io = new IntersectionObserver((entries) => {\n      entries.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)));\n      const hit = sections.filter((s) => seen.has(s)).pop();\n      if (hit && hit.id.slice(6) !== current) mark(hit.id.slice(6));\n    }, { rootMargin: '-30% 0px -65% 0px' });\n    sections.forEach((s) => io.observe(s));\n  }\n\n  place();\n  addEventListener('resize', place);\n\n  // Mouse: dwelling on the rail opens the list, leaving it closes a list opened that way. A tap or click opens it for good.\n  box.addEventListener('pointerenter', (e) => {\n    clearTimeout(leave);\n    if (e.pointerType !== 'mouse' || box.open) return;\n    dwell = setTimeout(() => { setOpen(true); byHover = true; }, 300);\n  });\n  box.addEventListener('pointerleave', () => {\n    clearTimeout(dwell);\n    // A link the keyboard moved into keeps the list open; focusout closes it once the focus leaves the nav.\n    if (byHover) leave = setTimeout(() => { if (!nav.contains(document.activeElement)) setOpen(false); }, 250);\n  });\n  sum.addEventListener('click', (e) => {\n    clearTimeout(dwell);\n    if (box.open && byHover) { e.preventDefault(); byHover = false; return; }\n    place();\n  });\n  box.addEventListener('toggle', () => { if (box.open) peek(null); });\n\n  // Keyboard: the summary opens with Enter or Space (native); arrows move through the links; Esc closes and returns to the rail.\n  sum.addEventListener('focus', () => {\n    if (sum.matches(':focus-visible')) peek(ticks.find((t) => t.dataset.id === current));\n  });\n  sum.addEventListener('blur', () => peek(null));\n  nav.addEventListener('keydown', (e) => {\n    if (e.key === 'Escape' && box.open) {\n      e.preventDefault();\n      setOpen(false);\n      sum.focus();\n      return;\n    }\n    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;\n    const at = links.indexOf(document.activeElement);\n    if (at < 0 && e.target !== sum) return;\n    e.preventDefault();\n    if (!box.open) setOpen(true);\n    let next;\n    if (e.key === 'Home') next = links[0];\n    else if (e.key === 'End') next = links[links.length - 1];\n    else if (at < 0) next = e.key === 'ArrowDown' ? currentLink() : links[links.length - 1];\n    else next = links[Math.min(links.length - 1, Math.max(0, at + (e.key === 'ArrowDown' ? 1 : -1)))];\n    next.focus();\n  });\n  nav.addEventListener('focusout', (e) => {\n    if (box.open && e.relatedTarget && !nav.contains(e.relatedTarget)) setOpen(false);\n  });\n\n  // Choosing a section or tapping outside closes the list.\n  links.forEach((a) => a.addEventListener('click', () => setOpen(false)));\n  document.addEventListener('pointerdown', (e) => { if (box.open && !nav.contains(e.target)) setOpen(false); });\n  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.open && !nav.contains(e.target)) setOpen(false); });\n})();\n\n// The toolbar's Export menu: Copy as image, Download PNG and Save as PDF. The menu is a native popover that src/render.js writes next to\n// the toolbar (a click on the button, Esc and a click outside open and close it with no script); this script shows the button, moves\n// focus with the arrow keys, says why an item cannot run, and does the work. A browser without popovers gets the same menu from a class\n// toggle instead of losing it.\n//\n// Copy and Download share one rasterizer. An item that cannot run is marked aria-disabled and carries the reason as its muted second\n// line (also its accessible description), never as the toolbar button's text: no rasterizer disables both; a preview frame whose feature\n// policy forbids clipboard-write, or a missing async Clipboard API / secure context, disables only Copy. Chromium and Firefox (as of\n// version 160) can rasterize the page; Safari and unknown browsers keep both items but carry a note that the effect is not guaranteed.\n// A refused copy reports a failure and never falls back to downloading. Save as PDF is the browser's print dialog and always works\n// (the page's print CSS hides the toolbar and the menu).\n//\n// Pipeline: clone the page body \u2192 inline every computed style (CSS variables are resolved there, so a clone keeps theme colours and\n// sizes) and the ::before / ::after decorations \u2192 wrap it in an SVG foreignObject \u2192 draw that image on a canvas \u2192 toBlob('image/png')\n// \u2192 navigator.clipboard.write(new ClipboardItem(...)), passing the blob as a promise so the write keeps the user's click activation,\n// or a download through <a download>.\n(() => {\n  const XHTML = 'http://www.w3.org/1999/xhtml';\n  const SVG = 'http://www.w3.org/2000/svg';\n  const MAX_DIM = 16384;        // Chrome refuses a canvas wider or taller than this\n  const MAX_AREA = 268435456;   // and one with more pixels than this (16384 * 16384)\n\n  const btn = document.querySelector('[data-am=\"export\"]');\n  const menu = document.getElementById('am-export');\n  if (!btn || !menu) return;\n  const main = document.querySelector('main.am-sheet, main.am-doc');\n  if (!main) return;\n  const items = [...menu.querySelectorAll('[data-export]')];\n  const item = (kind) => menu.querySelector(`[data-export=\"${kind}\"]`);\n  const [copyItem, downloadItem, pdfItem] = ['copy', 'download', 'pdf'].map(item);\n  const note = (el) => document.getElementById(el.getAttribute('aria-describedby'));\n  const text = menu.dataset;\n\n  const canRasterize = typeof XMLSerializer !== 'undefined' && typeof document.createElement('canvas').getContext === 'function';\n  const canCopy = window.isSecureContext && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard?.write === 'function';\n  // Chromium (including an embedded Chromium without navigator.userAgentData, whose UA still names Chrome/) and Firefox can rasterize\n  // the page. Safari and unknown browsers are not rejected outright: their items stay usable but carry a note that the effect is not\n  // guaranteed.\n  const brands = navigator.userAgentData?.brands;\n  const chromium = brands ? brands.some((b) => /Chromium/.test(b.brand)) : /\\bChrome\\//.test(navigator.userAgent);\n  const gecko = /\\bFirefox\\//.test(navigator.userAgent);\n  const native = Object.hasOwn(HTMLElement.prototype, 'popover') && typeof menu.showPopover === 'function';\n  btn.hidden = false;\n\n  const idle = btn.textContent;\n  // The button keeps its name (\"Export\") while its text shows progress, so a screen reader hears each result through a hidden live\n  // region beside it. aria-live, not\n  // role=\"status\": the live-update notice owns role=\"status\" (src/runtime/page.js), and the two must stay apart.\n  const status = document.createElement('span');\n  status.setAttribute('aria-live', 'polite');\n  status.dataset.am = 'export-status';\n  status.className = 'am-visually-hidden';\n  btn.after(status);\n  btn.setAttribute('aria-label', idle);\n  // Short feedback on the button itself, restored after a moment; the live region carries the same words.\n  const say = (message, restore) => {\n    btn.textContent = message;\n    status.textContent = message;\n    clearTimeout(say.timer);\n    if (restore) say.timer = setTimeout(() => { btn.textContent = idle; }, 1800);\n  };\n\n  // An item that can never run here (aria-disabled, reason as its second line), in the order of the conditions the page can act on.\n  const unavailable = new Map();\n  if (!canRasterize) {\n    unavailable.set(copyItem, text.unavailableBrowser);\n    unavailable.set(downloadItem, text.unavailableBrowser);\n  } else {\n    if (document.featurePolicy && document.featurePolicy.allowsFeature('clipboard-write') === false) unavailable.set(copyItem, text.unavailablePolicy);\n    else if (!canCopy) unavailable.set(copyItem, text.unavailableClipboard);\n    // Safari and unknown browsers can draw the page often enough to keep the items, but the result is not guaranteed.\n    if (!chromium && !gecko) for (const el of [copyItem, downloadItem]) if (!unavailable.has(el)) note(el).textContent = text.unverifiedEffect;\n  }\n  for (const [el, reason] of unavailable) note(el).textContent = reason;\n\n  // A running export blocks the next copy or download (a second full-page rasterization beside the first); Save as PDF stays free.\n  let busy = false;\n  const sync = () => {\n    for (const el of items) {\n      const off = unavailable.has(el) || (busy && el !== pdfItem);\n      if (off) el.setAttribute('aria-disabled', 'true');\n      else el.removeAttribute('aria-disabled');\n    }\n    if (busy) btn.setAttribute('aria-busy', 'true');\n    else btn.removeAttribute('aria-busy');\n  };\n  sync();\n\n  // A stylesheet of only the local font declarations, so a font a theme embeds still draws inside the SVG.\n  const fontFaceCss = () => {\n    let css = '';\n    for (const sheet of document.styleSheets) {\n      let rules;\n      try { rules = sheet.cssRules; } catch { continue; } // a cross-origin sheet has no readable rules; pages never carry one\n      for (const rule of rules) {\n        if (rule.type === 5 /* CSSRule.FONT_FACE_RULE */) css += `${rule.cssText}\\n`;\n      }\n    }\n    return css;\n  };\n\n  // Copy every computed declaration of src onto dst. The clone then needs no page stylesheet: var() is already resolved.\n  const inlineStyle = (src, dst) => {\n    const cs = getComputedStyle(src);\n    let css = '';\n    for (let i = 0; i < cs.length; i++) {\n      const name = cs[i];\n      const value = cs.getPropertyValue(name);\n      if (value) css += `${name}:${value};`;\n    }\n    dst.style.cssText = css;\n  };\n\n  // A ::before / ::after box exists only while the rule applies, so copy its computed declarations into a rule of its own. Each element\n  // that has one gets a data-cp marker; the marker keeps the rule from touching any other node in the picture.\n  let cpSeq = 0;\n  const pseudoRule = (src, dst, pseudo) => {\n    // The header's spacer keeps text clear of the toolbar (base.css); a picture has no toolbar, so it has no spacer.\n    if (pseudo === '::before' && src.classList.contains('am-head')) return '';\n    const cs = getComputedStyle(src, pseudo);\n    const content = cs.getPropertyValue('content');\n    if (!content || content === 'none' || content === 'normal') return '';\n    let css = '';\n    for (let i = 0; i < cs.length; i++) {\n      const name = cs[i];\n      const value = cs.getPropertyValue(name);\n      if (value) css += `${name}:${value};`;\n    }\n    if (!css) return '';\n    const mark = dst.getAttribute('data-cp') ?? String(++cpSeq);\n    dst.setAttribute('data-cp', mark);\n    return `[data-cp=\"${mark}\"]${pseudo}{${css}}\\n`;\n  };\n\n  // The page's chrome means nothing in a picture: remove the controls and the navigational rail from the clone; a runtime-made control opts out with data-export-skip.\n  const CHROME = '.am-code-copy, .am-diagram-expand, .am-table-controls, [class*=\"delta-switch\"], .am-toc, .am-remark-hover, .am-mark-note, [data-export-skip]';\n\n  function buildSvg(width, height) {\n    const clone = main.cloneNode(true);\n    // The clone has the same node order as the original, so one index walks both trees.\n    const srcNodes = [main, ...main.querySelectorAll('*')];\n    const dstNodes = [clone, ...clone.querySelectorAll('*')];\n    for (let i = 0; i < srcNodes.length; i++) {\n      inlineStyle(srcNodes[i], dstNodes[i]);\n    }\n    let pseudoCss = '';\n    for (let i = 0; i < srcNodes.length; i++) {\n      pseudoCss += pseudoRule(srcNodes[i], dstNodes[i], '::before');\n      pseudoCss += pseudoRule(srcNodes[i], dstNodes[i], '::after');\n    }\n    for (const node of clone.querySelectorAll(CHROME)) node.remove();\n    // A rasterized image is a static snapshot, not a scrollable viewport. Inlined computed styles turn auto heights\n    // into fixed fractional heights on scrolling containers (.am-table-wrap, .am-diagram, .am-annot-scroll, .am-math-block, pre),\n    // and subpixel rounding inside the foreignObject can trigger unwanted scrollbars. Reset unconstrained containers to visible and auto.\n    // For containers with an author-specified finite max-height, keep inlined height and max-height, and hide overflow.\n    for (const scroller of clone.querySelectorAll('.am-table-wrap, .am-diagram, .am-annot-scroll, .am-math-block, pre')) {\n      const maxH = parseFloat(scroller.style.maxHeight || scroller.style.getPropertyValue('max-height'));\n      if (Number.isFinite(maxH) && maxH >= 0) {\n        scroller.style.setProperty('overflow', 'hidden', 'important');\n      } else {\n        scroller.style.setProperty('overflow', 'visible', 'important');\n        scroller.style.setProperty('height', 'auto', 'important');\n        scroller.style.setProperty('max-height', 'none', 'important');\n      }\n    }\n    clone.style.margin = '0';\n    clone.style.width = `${width}px`;\n    clone.style.maxWidth = 'none';\n\n    const wrap = document.createElementNS(XHTML, 'div');\n    wrap.setAttribute('xmlns', XHTML);\n    const body = getComputedStyle(document.body);\n    wrap.style.cssText = `width:${width}px;height:${height}px;margin:0;padding:0;box-sizing:border-box;color:${body.color};font-family:${body.fontFamily};font-size:${body.fontSize};line-height:${body.lineHeight};background-color:${body.backgroundColor};background-image:${body.backgroundImage};`;\n\n    const style = document.createElementNS(XHTML, 'style');\n    style.textContent = `${fontFaceCss()}\\n${pseudoCss}`;\n    wrap.append(style, clone);\n\n    const svg = document.createElementNS(SVG, 'svg');\n    svg.setAttribute('xmlns', SVG);\n    svg.setAttribute('width', String(width));\n    svg.setAttribute('height', String(height));\n    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);\n    const foreign = document.createElementNS(SVG, 'foreignObject');\n    foreign.setAttribute('x', '0');\n    foreign.setAttribute('y', '0');\n    foreign.setAttribute('width', String(width));\n    foreign.setAttribute('height', String(height));\n    foreign.append(wrap);\n    svg.append(foreign);\n    return new XMLSerializer().serializeToString(svg);\n  }\n\n  // A canvas may not exceed the browser's dimension or area limit: shrink the pixels rather than fail on a long page. No lower bound:\n  // one would let a very long page exceed the limits again.\n  const pixelScale = (width, height) => {\n    const wanted = Math.min(2, window.devicePixelRatio || 1);\n    return Math.min(wanted, MAX_DIM / width, MAX_DIM / height, Math.sqrt(MAX_AREA / (width * height)));\n  };\n\n  async function rasterize() {\n    await document.fonts?.ready;\n    // A steps block that is live on screen shows its static look in a picture, not the reader's selection (src/export.js does the same\n    // for image export); the page goes live again right after.\n    const live = [...document.querySelectorAll('.am-steps--live')];\n    for (const el of live) el.classList.remove('am-steps--live');\n    let width;\n    let height;\n    let svg;\n    try {\n      const rect = main.getBoundingClientRect();\n      width = Math.max(1, Math.ceil(Math.max(rect.width, main.scrollWidth)));\n      height = Math.max(1, Math.ceil(Math.max(rect.height, main.scrollHeight)));\n      svg = buildSvg(width, height);\n    } finally {\n      for (const el of live) el.classList.add('am-steps--live');\n    }\n    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;\n    const image = new Image();\n    image.decoding = 'async';\n    await new Promise((resolve, reject) => {\n      image.onload = resolve;\n      image.onerror = () => reject(new Error('the browser cannot draw the page as an SVG image'));\n      image.src = url;\n    });\n    const scale = pixelScale(width, height);\n    const canvas = document.createElement('canvas');\n    canvas.width = Math.max(1, Math.round(width * scale));\n    canvas.height = Math.max(1, Math.round(height * scale));\n    const ctx = canvas.getContext('2d');\n    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);\n    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));\n    if (!blob) throw new Error('the browser could not encode the image');\n    return blob;\n  }\n\n  // The PNG is saved under the page title (letters and digits of any script, joined by dashes).\n  const fileName = () => {\n    const slug = (document.title || '').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, '-').slice(0, 40).replace(/^-+|-+$/g, '');\n    return `${slug || 'page'}.png`;\n  };\n  const download = (blob) => {\n    const link = document.createElement('a');\n    link.href = URL.createObjectURL(blob);\n    link.download = fileName();\n    document.body.append(link);\n    link.click();\n    link.remove();\n    setTimeout(() => URL.revokeObjectURL(link.href), 4000);\n  };\n\n  // Start rasterizing, then hand the pending blob to ClipboardItem and write within the same click task so the browser keeps the\n  // user's activation. Awaiting the raster first would spend it, and the write would be rejected. The write can be refused at once\n  // while the page is still being drawn; wait for both to settle, so a retry cannot start a second rasterization beside the first.\n  const copy = async () => {\n    const blobPromise = rasterize();\n    const written = (async () => {\n      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);\n    })();\n    const [write] = await Promise.allSettled([written, blobPromise]);\n    if (write.status === 'rejected') throw write.reason;\n  };\n  const save = async () => { download(await rasterize()); };\n\n  async function run(work, done) {\n    busy = true;\n    sync();\n    say(text.working, false);\n    try {\n      await work();\n      say(done, true);\n    } catch (e) {\n      console.error('[am] export failed', e);\n      say(text.failed, true);\n    } finally {\n      busy = false;\n      sync();\n    }\n  }\n\n  // The menu. Native: the popover opens and closes itself and tells us through toggle events. Fallback: the same menu toggled by a\n  // class, with Esc and a click outside handled here.\n  const isOpen = () => (native ? menu.matches(':popover-open') : menu.classList.contains('is-open'));\n  // Under the button, aligned to its inline-end edge, and inside the viewport (the toolbar scrolls sideways on a phone, so the button\n  // can sit near an edge). On a short viewport the menu is cut to the space below the button and scrolls, so every item stays reachable.\n  const place = () => {\n    const r = btn.getBoundingClientRect();\n    // clientWidth, not 100vw: the viewport width in CSS includes a classic scrollbar, so a menu sized from it can stick out.\n    const room = document.documentElement.clientWidth - 16;\n    menu.style.maxWidth = `${room}px`;\n    menu.style.minWidth = `${Math.min(200, room)}px`;\n    const width = menu.offsetWidth;\n    const rtl = getComputedStyle(btn).direction === 'rtl';\n    const left = Math.max(8, Math.min(rtl ? r.left : r.right - width, document.documentElement.clientWidth - 8 - width));\n    const top = r.bottom + 6;\n    menu.style.top = `${top}px`;\n    menu.style.left = `${left}px`;\n    menu.style.maxHeight = `${Math.max(48, document.documentElement.clientHeight - 8 - top)}px`;\n  };\n  const firstEnabled = () => items.find((el) => el.getAttribute('aria-disabled') !== 'true');\n  const opened = () => {\n    btn.setAttribute('aria-expanded', 'true');\n    place();\n    menu.style.visibility = '';\n    firstEnabled()?.focus();\n  };\n  const closed = (restoreFocus) => {\n    btn.setAttribute('aria-expanded', 'false');\n    if (restoreFocus || menu.contains(document.activeElement)) btn.focus();\n  };\n  const close = (restoreFocus = true) => {\n    if (!isOpen()) return;\n    if (native) menu.hidePopover();\n    else { menu.classList.remove('is-open'); closed(restoreFocus); }\n  };\n\n  if (native) {\n    // Place the box before it is first drawn, so it never flashes in the wrong spot.\n    menu.addEventListener('beforetoggle', (e) => {\n      btn.setAttribute('aria-expanded', String(e.newState === 'open'));\n      if (e.newState === 'open') menu.style.visibility = 'hidden';\n    });\n    menu.addEventListener('toggle', (e) => { if (e.newState === 'open') opened(); else closed(false); });\n  } else {\n    // No popover: the browser must not half-handle the attributes, and the button toggles the class itself.\n    menu.removeAttribute('popover');\n    btn.removeAttribute('popovertarget');\n    btn.addEventListener('click', () => {\n      if (isOpen()) close();\n      else { menu.classList.add('is-open'); opened(); }\n    });\n    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) { e.preventDefault(); close(); } });\n    document.addEventListener('pointerdown', (e) => { if (isOpen() && !menu.contains(e.target) && !btn.contains(e.target)) close(false); });\n  }\n  window.addEventListener('resize', () => { if (isOpen()) place(); });\n\n  menu.addEventListener('keydown', (e) => {\n    const at = items.indexOf(document.activeElement);\n    const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: items.length - 1 }[e.key];\n    if (to !== undefined) {\n      e.preventDefault();\n      items[(to + items.length) % items.length].focus();\n    } else if (e.key === 'Tab') {\n      close(true); // focus goes back to the button and Tab then moves on from there\n    }\n  });\n\n  menu.addEventListener('click', (e) => {\n    const el = e.target.closest('[data-export]');\n    if (!el || el.getAttribute('aria-disabled') === 'true') return;\n    close();\n    if (el === pdfItem) window.print();\n    else if (el === copyItem) run(copy, text.copied);\n    else run(save, text.saved);\n  });\n})();\n})();\n";
 var TABLE_JS = "(() => {\n  const NUMBER = /^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?$/i;\n  const FORMATTED_NUMBER = /^[+-]?\\$?(?:(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d*)?|\\.\\d+)%?$/;\n  const INTEGER = /^[+-]?\\d+$/;\n  const ZERO_FRACTION = /^[+-]?\\d+\\.0*$/;\n  const DATE = /^\\d{4}-\\d{2}-\\d{2}(?:[T ]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,3})?)?(?:Z|[+-]\\d{2}:?\\d{2})?)?$/;\n  const INTERACTIVE = 'a, button, input, select, textarea, details, audio[controls], video[controls], [contenteditable], [tabindex]';\n  const validDate = (text) => {\n    if (!DATE.test(text)) return false;\n    const [year, month, day] = text.slice(0, 10).split('-').map(Number);\n    const date = new Date(0);\n    date.setUTCHours(0, 0, 0, 0);\n    date.setUTCFullYear(year, month - 1, day);\n    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && Number.isFinite(Date.parse(text));\n  };\n  const numberValue = (text) => {\n    let normalized = text;\n    if (FORMATTED_NUMBER.test(text)) normalized = text.replace(/[$,%]/g, '');\n    else if (!NUMBER.test(text)) return null;\n    if (INTEGER.test(normalized)) return BigInt(normalized);\n    if (ZERO_FRACTION.test(normalized)) return BigInt(normalized.slice(0, normalized.indexOf('.')));\n    const value = Number(normalized);\n    return Number.isFinite(value) ? value : null;\n  };\n  const typedValue = (text) => {\n    const number = numberValue(text);\n    if (number !== null) return number;\n    return validDate(text) ? Date.parse(text) : null;\n  };\n  const relayout = () => window.dispatchEvent(new Event('resize'));\n\n  for (const table of document.querySelectorAll('table[data-am-table]')) {\n    const options = new Set(table.dataset.amTable.split(/\\s+/));\n    const body = table.tBodies[0];\n    if (!body) continue;\n\n    if (options.has('filter')) {\n      const controls = table.parentElement.previousElementSibling;\n      const input = controls?.classList.contains('am-table-controls') ? controls.querySelector('[data-am-table-filter]') : null;\n      if (input) {\n        controls.hidden = false;\n        input.addEventListener('input', () => {\n          const query = input.value.trim().toLocaleLowerCase();\n          for (const row of body.rows) row.hidden = Boolean(query) && !row.textContent.toLocaleLowerCase().includes(query);\n          relayout();\n        });\n      }\n    }\n\n    if (!options.has('sort')) continue;\n    const headers = [...(table.tHead?.rows[0]?.cells ?? [])];\n    headers.forEach((head, column) => {\n      const button = document.createElement('button');\n      button.type = 'button';\n      button.className = 'am-table-sort';\n      button.setAttribute('aria-label', head.textContent.trim());\n      const moved = [...head.childNodes].filter((child) => !(child.nodeType === 1 && (child.matches(INTERACTIVE) || child.querySelector(INTERACTIVE))));\n      head.insertBefore(button, moved[0] ?? null);\n      button.append(...moved);\n      button.addEventListener('click', () => {\n        const direction = head.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';\n        for (const cell of headers) cell.removeAttribute('aria-sort');\n        head.setAttribute('aria-sort', direction);\n        const rows = [...body.rows];\n        const texts = rows.map((row) => row.cells[column]?.textContent.trim() ?? '');\n        const numeric = texts.every((text) => numberValue(text) !== null);\n        const dates = texts.every(validDate);\n        const byValue = head.getAttribute('align') === 'right' || numeric || dates;\n        const sorted = rows.map((row, index) => ({ row, index, text: texts[index], value: byValue ? typedValue(texts[index]) : null }));\n        sorted.sort((a, b) => {\n          let compared;\n          if (byValue && (a.value !== null || b.value !== null)) {\n            if (a.value === null) compared = 1;\n            else if (b.value === null) compared = -1;\n            else compared = a.value < b.value ? -1 : a.value > b.value ? 1 : 0;\n          }\n          compared ??= a.text.localeCompare(b.text);\n          return compared === 0 ? a.index - b.index : direction === 'ascending' ? compared : -compared;\n        });\n        body.append(...sorted.map(({ row }) => row));\n        relayout();\n      });\n    });\n  }\n})();\n";
 var TABLE_CSS = `.am-table-controls { margin: 0 0 8px; }
 .am-table-filter { display: flex; align-items: center; gap: 8px; font-size: var(--am-fs-small); color: var(--ink-2); }
@@ -868,11 +900,7 @@ var DELTA_CSS = `/* Change markers (only on pages that have one). Only the Chang
 `;
 var RTL_CSS = '/* Right-to-left pages (html[dir="rtl"]: Hebrew, Arabic, Persian, Urdu, Yiddish). base.css uses logical properties, so the layout\n   mirrors by itself; this file holds only what logical properties cannot say. A left-to-right page never carries it. */\n\n/* Code, diffs and paths read left to right in every language. Inline code is isolated, so the text around it keeps its order. */\nhtml[dir="rtl"] .am-codeblock, html[dir="rtl"] .am-code, html[dir="rtl"] pre { direction: ltr; text-align: left; }\nhtml[dir="rtl"] :not(pre) > code { direction: ltr; unicode-bidi: isolate; }\n\n/* Small labels use the monospace font. No common monospace font has Hebrew or Arabic letters, so the browser borrows a fixed-width\n   fallback that spaces the letters apart; letter spacing and capitals also break these scripts. Labels use the sans font instead. */\nhtml[dir="rtl"] .am-md th, html[dir="rtl"] .am-kv dt, html[dir="rtl"] .am-head-meta b, html[dir="rtl"] .am-panel-meta,\nhtml[dir="rtl"] .am-annot-meta, html[dir="rtl"] .am-tree-tag, html[dir="rtl"] .am-timeline--v .am-tl-when,\nhtml[dir="rtl"] .am-diagram .am-cluster-label, html[dir="rtl"] .am-delta-bar, html[dir="rtl"] .am-lim-val,\nhtml[dir="rtl"] .am-colophon, html[dir="rtl"] .am-reply textarea {\n  font-family: var(--font-sans); letter-spacing: normal; text-transform: none;\n}\nhtml[dir="rtl"] .am-head h1 { letter-spacing: normal; }\n/* The annotated sentence is set in the sans font too; src/components/annot.js measures the placement of its notes in that font. */\nhtml[dir="rtl"] .am-annot-line { font-family: var(--font-sans); }\n\n/* Diagram text: the drawing is already mirrored (src/components/flow.js, sequence.js); the text inside reads right to left. */\nhtml[dir="rtl"] .am-diagram svg { direction: rtl; }\n\n/* Limits scale: the ticks are placed from the right (src/components/limits.js), so each one centres on its point from that side. */\nhtml[dir="rtl"] .am-lim-ticks span { transform: translateX(50%); }\nhtml[dir="rtl"] .am-lim-ticks span:first-child { transform: none; }\n\n/* The limits value is written in the page language (src/languages/he.js: "420 of 1000 KB" in Hebrew words), so it reads right to left\n   like the label. The label, its note and the value are isolated from each other: "Redis" at the end of a label and "70%" at the\n   start of its note would otherwise run together as one left-to-right piece. */\nhtml[dir="rtl"] .am-lim-head > span, html[dir="rtl"] .am-lim-note, html[dir="rtl"] .am-lim-val { unicode-bidi: isolate; }\n\n/* Horizontal timeline: a date written the Hebrew way (15.11.2026) is wider than a year, and in a narrow panel the dates of\n   neighbouring items ran into each other ("1.12.202615.11.2026"). The date shrinks to fit its column, never above its usual 15px. */\nhtml[dir="rtl"] .am-timeline--h .am-tl-when { font-size: min(var(--am-fs-heading), calc(100cqi / var(--n, 1) / 6.2)); white-space: nowrap; }\n@container (max-width: 560px) {\n  html[dir="rtl"] .am-timeline--h .am-tl-when { font-size: var(--am-fs-heading); }\n}\n\n/* Video player (src/video/render.js): the scenes lay out right to left like a page, and what video.css places with left / right mirrors here.\n   A theme mirrors its own placements with video.rtlCss. The controls row stays left to right, as in common video players: the play\n   button on the left, then the clock, the progress bar with its chapter ticks, the speed and the export button. */\nhtml[dir="rtl"][data-video] .amv-ruler--top span + span, html[dir="rtl"][data-video] .amv-ruler--bottom span + span { border-left: 0; border-right: 1px solid var(--line); }\nhtml[dir="rtl"][data-video] .amv-titleblock { text-align: right; }\n/* The title block labels and the scene header numbers use the monospace font in video.css: sans here, as for the small page labels above. */\nhtml[dir="rtl"][data-video] .amv-titleblock b, html[dir="rtl"][data-video] .amv-scene-meta { font-family: var(--font-sans); letter-spacing: normal; }\nhtml[dir="rtl"][data-video] .amv-titleblock div + div { border-left: 0; border-right: 1px solid var(--line); }\nhtml[dir="rtl"][data-video] .amv-controls { direction: ltr; }\n\n/* Remark mode: a note inside a code block reads in the page direction, not in the left-to-right direction of the code. */\nhtml[dir="rtl"] pre .am-mark-note { direction: rtl; }\n/* A code block reads left to right, so its inline start is its left edge; the mark bar goes to the right like the other marks. */\nhtml[dir="rtl"] pre.am-mark { border-inline-start: 0; padding-inline-start: 0; border-inline-end: 3px solid var(--mark); }\n';
 var CHART_CSS = '/* Charts (src/components/chart.js). Only a page with a chart carries this file, the way only a page with math carries the math styles.\n   Series colors are the diagram tokens --series-1 to --series-6 (docs/reference.md, "Diagram tokens"): a theme that sets one wins, and\n   the fallbacks are the fixed palette below (Tableau 10 style), a set for light and a set for dark. Bars carry their value, the legend names\n   the series and the data table holds the numbers, so a color is never the only way to read a bar. The axis, grid and labels read the usual\n   tokens, so a theme that sets nothing still gets a chart in its own colors. */\nhtml {\n  --am-ch-1: #4e79a7; --am-ch-2: #f28e2b; --am-ch-3: #e15759; --am-ch-4: #76b7b2; --am-ch-5: #59a14f; --am-ch-6: #b07aa1;\n}\nhtml[data-mode="dark"] {\n  --am-ch-1: #7aa6d6; --am-ch-2: #f5a55a; --am-ch-3: #ef7f80; --am-ch-4: #8fd0cb; --am-ch-5: #7cc472; --am-ch-6: #c99bbd;\n}\n@media (prefers-color-scheme: dark) {\n  html[data-mode="auto"] {\n    --am-ch-1: #7aa6d6; --am-ch-2: #f5a55a; --am-ch-3: #ef7f80; --am-ch-4: #8fd0cb; --am-ch-5: #7cc472; --am-ch-6: #c99bbd;\n  }\n}\n\n.am-ch-s1 { fill: var(--series-1, var(--am-ch-1)); }\n.am-ch-s2 { fill: var(--series-2, var(--am-ch-2)); }\n.am-ch-s3 { fill: var(--series-3, var(--am-ch-3)); }\n.am-ch-s4 { fill: var(--series-4, var(--am-ch-4)); }\n.am-ch-s5 { fill: var(--series-5, var(--am-ch-5)); }\n.am-ch-s6 { fill: var(--series-6, var(--am-ch-6)); }\n/* A highlighted row of a single series takes the accent color; in a chart with a highlight the other rows are gray (a line is never gray). */\n.am-ch-hi { fill: var(--accent, #1d5fbf); }\n.am-ch-row.is-dim .am-ch-bar, .am-ch-row.is-dim .am-ch-slice, .am-ch-row.is-dim .am-ch-sw { fill: var(--line-2, #d6dae1); fill: color-mix(in oklch, var(--ink-3, #8b929e) 40%, var(--paper, #ffffff)); }\n\n/* A line: a stroke in the series color, a dot on each point; the dot has an outline in the paper color where lines cross. A pie slice has\n   the same outline, which is the gap between slices. */\n.am-ch-line { fill: none; stroke-width: 2.5; stroke-linecap: round; }\n.am-ch-line.am-ch-s1 { stroke: var(--series-1, var(--am-ch-1)); }\n.am-ch-line.am-ch-s2 { stroke: var(--series-2, var(--am-ch-2)); }\n.am-ch-line.am-ch-s3 { stroke: var(--series-3, var(--am-ch-3)); }\n.am-ch-line.am-ch-s4 { stroke: var(--series-4, var(--am-ch-4)); }\n.am-ch-line.am-ch-s5 { stroke: var(--series-5, var(--am-ch-5)); }\n.am-ch-line.am-ch-s6 { stroke: var(--series-6, var(--am-ch-6)); }\n.am-ch-dot, .am-ch-slice { stroke: var(--paper, #ffffff); stroke-width: 1.5; }\n.am-ch-slice { stroke-width: 2; stroke-linejoin: round; }\n.am-ch-guide { stroke: var(--ink-3, #8b929e); stroke-width: 1; stroke-dasharray: 3 3; }\n\n.am-ch-grid { stroke: var(--line-2, #d6dae1); stroke-width: 1; }\n.am-ch-zero { stroke: var(--ink-3, #8b929e); stroke-width: 1; }\n.am-diagram .am-ch-cat, .am-diagram .am-ch-leg { fill: var(--ink-2, #4b5260); font-size: var(--am-fs-d-chartCat); }\n.am-diagram .am-ch-tick, .am-diagram .am-ch-val { fill: var(--ink-2, #4b5260); font-size: var(--am-fs-d-chartTick); }\n/* The value labels of a highlighted row in a chart with several series take the color of their series, in a heavier weight to read on it. */\n.am-diagram .am-ch-val.am-ch-s1, .am-diagram .am-ch-val.am-ch-s2, .am-diagram .am-ch-val.am-ch-s3, .am-diagram .am-ch-val.am-ch-s4, .am-diagram .am-ch-val.am-ch-s5, .am-diagram .am-ch-val.am-ch-s6 { font-weight: 600; }\n.am-diagram .am-ch-val.am-ch-s1 { fill: var(--series-1, var(--am-ch-1)); }\n.am-diagram .am-ch-val.am-ch-s2 { fill: var(--series-2, var(--am-ch-2)); }\n.am-diagram .am-ch-val.am-ch-s3 { fill: var(--series-3, var(--am-ch-3)); }\n.am-diagram .am-ch-val.am-ch-s4 { fill: var(--series-4, var(--am-ch-4)); }\n.am-diagram .am-ch-val.am-ch-s5 { fill: var(--series-5, var(--am-ch-5)); }\n.am-diagram .am-ch-val.am-ch-s6 { fill: var(--series-6, var(--am-ch-6)); }\n/* A value label may sit over a line or a guide: a halo in the paper color keeps it readable. */\n.am-diagram .am-ch-val { paint-order: stroke; stroke: var(--paper, #ffffff); stroke-width: 3px; stroke-linejoin: round; }\n.am-diagram .am-ch-num { fill: var(--ink-2, #4b5260); font-size: var(--am-fs-d-chartCat); font-variant-numeric: tabular-nums; }\n.am-diagram .am-ch-total { fill: var(--ink, #1a1d23); font-weight: 600; }\n\n/* The data table under the chart: collapsed, for a screen reader and for a reader who wants the numbers. It looks like a Markdown table. */\n.am-ch-data { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-2); text-align: start; font-size: var(--am-fs-text); }\n.am-ch-data summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; font: var(--am-fs-label)/1.3 var(--font-mono); color: var(--ink-3); letter-spacing: .04em; }\n.am-ch-data summary::-webkit-details-marker { display: none; }\n.am-ch-data summary::before { content: ""; width: 0; height: 0; border-block: 4px solid transparent; border-inline-start: 6px solid currentColor; transition: transform .15s; }\n.am-ch-data[open] summary::before { transform: rotate(90deg); }\n/* The triangle points to the end side, which is the left on a right-to-left page: it turns the other way to point down. */\nhtml[dir="rtl"] .am-ch-data[open] summary::before { transform: rotate(-90deg); }\n@media (prefers-reduced-motion: reduce) { .am-ch-data summary::before { transition: none; } }\n.am-ch-data summary:hover { color: var(--ink); }\n.am-ch-data table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: var(--am-fs-text); }\n.am-ch-data thead th { font: var(--am-fs-label)/1.3 var(--font-mono); color: var(--ink-2); font-weight: 400; padding: 6px 10px; border-bottom: 1px solid var(--line); }\n.am-ch-data thead th::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-inline-end: 6px; }\n.am-ch-data thead th:nth-child(2)::before { background: var(--series-1, var(--am-ch-1)); }\n.am-ch-data thead th:nth-child(3)::before { background: var(--series-2, var(--am-ch-2)); }\n.am-ch-data thead th:nth-child(4)::before { background: var(--series-3, var(--am-ch-3)); }\n.am-ch-data thead th:nth-child(5)::before { background: var(--series-4, var(--am-ch-4)); }\n.am-ch-data thead th:nth-child(6)::before { background: var(--series-5, var(--am-ch-5)); }\n.am-ch-data thead th:nth-child(7)::before { background: var(--series-6, var(--am-ch-6)); }\n.am-ch-data--pie thead th::before { content: none; }\n.am-ch-data th, .am-ch-data td { padding: 7px 10px; font-variant-numeric: tabular-nums; }\n.am-ch-data th[scope="row"] { text-align: start; font-weight: 400; }\n/* Numbers read left to right in every language and line up on their right edge, under the series name. */\n.am-ch-data td, .am-ch-data thead th { text-align: right; }\n.am-ch-data tbody tr:nth-child(even) > * { background: var(--fill); }\n';
-var MATH_CSS = `/*
-Temml.woff2 is a clone of KaTeX_Script-Regular, except that the code points
-have been changed from ASCII to Unicode Mathematical Alphanumeric Symbols Script capitals,
-Unicode range 1D49C to 1D4B5.
-*/
+var MATH_CSS = `
 
 @font-face {
   font-family: 'Temml';
@@ -892,7 +920,7 @@ math {
   letter-spacing: normal;
   word-wrap: normal;
   direction: ltr;
-  /* Prevent Firefox from omitting the dot on i or j. */
+  
   font-feature-settings: "dtls" off;
 }
 
@@ -900,15 +928,14 @@ math * {
   border-color: currentColor;
 }
 
-/* display: block is necessary in Firefox and Safari.
- * Not in Chromium, which recognizes display: "block math" written inline. */
+
  math.tml-display {
   display: block;
   width: 100%;
 }
 
 *.mathcal {
-  /* NotoSans */
+  
   font-feature-settings: 'ss01';
 }
 
@@ -920,7 +947,7 @@ mo.tml-prime {
   font-family: Temml;
 }
 
-/* Cramped superscripts in WebKit */
+
 mfrac > :nth-child(2),
 msqrt,
 mover > :first-child {
@@ -939,9 +966,9 @@ mover > :first-child {
   left: 0;
   padding: 0.5ex 0ex;
   background-color: currentColor;
-  /* Use the SVG as an alpha mask (painted by background-color) */
-  -webkit-mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><defs><marker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'><path fill='black' d='m0 0 7 2.5L0 5z'/></marker></defs><line x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/></svg>");
-          mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><defs><marker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'><path fill='black' d='m0 0 7 2.5L0 5z'/></marker></defs><line x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/></svg>");
+  
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cmarker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'%3E%3Cpath fill='black' d='m0 0 7 2.5L0 5z'/%3E%3C/marker%3E%3C/defs%3E%3Cline x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cmarker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'%3E%3Cpath fill='black' d='m0 0 7 2.5L0 5z'/%3E%3C/marker%3E%3C/defs%3E%3Cline x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
   -webkit-mask-repeat: no-repeat;
           mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
@@ -951,18 +978,18 @@ mover > :first-child {
 }
 
 @supports (-moz-appearance: none) {
-  /* \\vec w/o italic correction for Firefox */
+  
   .tml-vec {
     transform: scale(0.75)
   }
-  /* Fix \\cancelto in Firefox */
+  
   .ff-narrow {
     width: 0em;
   }
   .ff-nudge-left {
     margin-left: -0.2em;
   }
-  /* Squash hidden mrows in \\bordermatrix. Messes with centering, but necessary to squash. */
+  
   .ff-squash mtd {
     display: block;
     height: 0;
@@ -970,12 +997,12 @@ mover > :first-child {
 }
 
 @supports (not (-moz-appearance: none)) {
-  /* Chromium and WebKit */
-  /* prime vertical alignment */
+  
+  
   mo.tml-prime {
     font-family: Temml;
   }
-  /* Italic correction on superscripts */
+  
   .tml-sml-pad {
     padding-left: 0.05em;
   }
@@ -988,9 +1015,9 @@ mover > :first-child {
 }
 
 @supports (-webkit-backdrop-filter: blur(1px)) {
-  /* WebKit vertical & italic correction on accents */
+  
   .wbk-acc {
-    /* lower by x-height distance */
+    
     transform: translate(0em, 0.431em);
   }
   .wbk-sml {
@@ -1022,13 +1049,13 @@ mover > :first-child {
   }
 }
 
-/* \\cancel & \\phase use background images. Get them to print. */
+
 menclose {
-  -webkit-print-color-adjust: exact;  /* Chrome & Edge */
+  -webkit-print-color-adjust: exact;  
           print-color-adjust: exact;
 }
 
-/* Array cell justification in Firefox & WebKit */
+
 .tml-right {
   text-align: right;
 }
@@ -1036,12 +1063,12 @@ menclose {
   text-align: left;
 }
 
-/* For CD labels that grow to the left in Firefox and WebKit */
+
 .tml-shift-left { margin-left:-200% }
 
-/* Styles for Chromium only */
+
 @supports (not (-webkit-backdrop-filter: blur(1px))) and (not (-moz-appearance: none)) {
-  /* Italic correction on accents */
+  
   .chr-sml {
     transform: translate(0.07em, 0)
   }
@@ -1061,11 +1088,11 @@ menclose {
     transform: scale(0.75) translate(0.21em, 0)
   }
 
-  /* For CD labels that grow to the left */
+  
   .tml-shift-left { margin-left:-100% }
 
-  /* MathML Core & Chromium do not support the MathML 3.0 element <menclose> attributes. */
-  /* So use styles. */
+  
+  
   menclose {
     position: relative;
     padding: 0.5ex 0ex;
@@ -1163,7 +1190,7 @@ menclose {
     margin-right: 0.03889em;
    }
 
-   /* Stretch \\widetilde */
+   
   .tml-tilde-2 {
     transform: scale(2.0, 1.1)
   }
@@ -1173,7 +1200,7 @@ menclose {
   .tml-tilde-4 {
     transform: scale(4.0, 1.1)
   }
-  /* Stretch \\widehat */
+  
   .tml-hat-1 {
     transform: scale(1.9, 1.0)
   }
@@ -1187,7 +1214,7 @@ menclose {
     transform: scale(7.8, 1.0)
   }
   
-  /* set array cell justification */
+  
   .tml-right {
     text-align: -webkit-right;
   }
@@ -1200,7 +1227,7 @@ menclose {
   font-family: 'STIX TWO', 'Times New Roman', Times, Tinos, serif;
 }
 
-/* flex-wrap for line-breaking in Chromium */
+
 math {
   display: inline-flex;
   flex-wrap: wrap;
@@ -1210,8 +1237,8 @@ math > mrow {
   padding: 0.5ex 0ex;
 }
 
-/* Default mtd top padding is 0.5ex per MathML-Core and user-agent CSS */
-/* We adjust for jot and small */
+
+
 mtable.tml-jot > mtr > mtd {
   padding-top: 0.7ex;
   padding-bottom: 0.7ex;
@@ -1221,17 +1248,17 @@ mtable.tml-small mtd {
   padding-bottom: 0.35ex;
 }
 
-/* Firefox */
+
 @-moz-document url-prefix() {
-  /* Avoid flex-wrap */
+  
   math { display: inline; }
   math > mrow { padding: 0 }
-  /* Adjust Firefox spacing between array rows */
+  
   mtd, mtable.tml-small mtd { padding-top: 0; padding-bottom: 0; }
   mtable.tml-jot > mtr > mtd { padding-top: 0.2ex; padding-bottom: 0.2ex; }
 }
 
-/* AMS environment auto-numbering via CSS counter. */
+
 .tml-eqn::before {
   counter-increment: tmlEqnNo;
   content: "(" counter(tmlEqnNo) ")";
@@ -1255,6 +1282,114 @@ math:not(.tml-display) { max-width: 100%; overflow-x: auto; overflow-y: hidden; 
 `;
 var FONT_CSS = { "bangers": '/* Bangers, Copyright 2010 The Bangers Project Authors (https://github.com/googlefonts/bangers), SIL Open Font License 1.1 (https://openfontlicense.org) */\n@font-face {\n  font-family: "Bangers";\n  font-style: normal;\n  font-weight: 400 900;\n  src: url(data:font/woff2;base64,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) format("woff2");\n}' };
 var DELTA_JS = "\n// \u2500\u2500 Change markers: the Before / Changes / After switch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// The switch starts hidden because it needs this script. It swaps the am-view-* class of its diagram; the delta styles show the colors and badges only in\n// the Changes view and hide the items that do not exist in the view.\n(() => {\n  const VIEWS = ['before', 'changes', 'after'];\n  const setView = (el, view) => {\n    el.classList.remove(...VIEWS.map((v) => `am-view-${v}`));\n    el.classList.add(`am-view-${view}`);\n  };\n  for (const bar of document.querySelectorAll('.am-delta-bar')) {\n    const view = bar.parentElement;\n    const group = bar.querySelector('.am-delta-switch');\n    if (!group) continue;\n    group.hidden = false;\n    group.addEventListener('click', (e) => {\n      const btn = e.target.closest('button[data-view]');\n      if (!btn) return;\n      setView(view, btn.dataset.view);\n      for (const b of group.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn));\n    });\n  }\n  // The expand button copies only the drawing into the viewer; the viewer shows the view the diagram is in.\n  document.addEventListener('click', (e) => {\n    const host = e.target.closest?.('.am-diagram-expand')?.parentElement;\n    const canvas = document.querySelector('.am-lightbox-canvas');\n    const view = host && VIEWS.find((v) => host.classList.contains(`am-view-${v}`));\n    if (view && canvas) setView(canvas, view);\n  });\n})();\n";
+var STEPS_CSS = `/* Steps block (only on pages that have one): a diagram and a code block (or, in explain mode, a list of explanations) linked by numbered steps (src/steps.js).
+   The default look is the static one that print, an image export and a page with no JavaScript show: every step is numbered on its
+   diagram item (a badge) and beside its first line (a gutter number), and a numbered list of the steps follows the pair.
+   The page runtime (src/runtime/steps.js) adds the class am-steps--live; only then, and only on screen, the numbers and the list give way
+   to the bar, the boxes and the note. The layout follows the block's own width, not the window's. */
+.am-steps { container-type: inline-size; margin: 10px 0; --steps-pad: 24px; }
+.am-steps-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.am-steps-pair > * { margin: 0; min-width: 0; }
+.am-steps:focus { outline: none; }
+.am-steps .am-diagram svg { max-width: 100%; height: auto; }
+/* The pair is in the order of the draft. Stacked, the diagram always comes first; side by side the order of the draft shows. */
+.am-steps-pair > .am-steps-diagram { order: -1; }
+/* Side by side from about 720px of block width: the diagram takes what it needs, up to 45%; a walkthrough (no diagram) stays one column. */
+@container (min-width: 720px) {
+  .am-steps-pair > .am-steps-diagram { order: 0; }
+  .am-steps-pair:has(> .am-steps-diagram:first-child) { grid-template-columns: fit-content(45%) minmax(0, 1fr); }
+  .am-steps-pair:has(> .am-steps-diagram:last-child) { grid-template-columns: minmax(0, 1fr) fit-content(45%); }
+}
+
+/* A long line wraps under its own text, so the linked code never scrolls sideways; the number stays in the gutter (a hanging indent). */
+.am-steps .am-code code { min-width: 0; }
+.am-steps .am-ln {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  padding-inline-start: calc(var(--steps-pad) + 3.5ch + 12px); text-indent: calc(-3.5ch - 12px);
+}
+.am-steps .am-code--num .am-ln::before { text-indent: 0; }
+.am-steps .am-ln[data-sn] { position: relative; }
+.am-steps .am-ln[data-sn]::after {
+  content: attr(data-sn); position: absolute; inset-inline-start: 3px; top: 0.75em; transform: translateY(-50%); text-indent: 0; white-space: normal;
+  box-sizing: border-box; min-width: var(--am-ln-treeBadge); height: var(--am-ln-treeBadge); padding: 0 3px; border-radius: 50%;
+  background: var(--ink); color: var(--paper); font: 600 var(--am-fs-label)/var(--am-ln-treeBadge) var(--font-sans); text-align: center;
+}
+
+/* The numbers on the diagram: a disc on an svg item, a tag on a tree entry. */
+g.am-step-badge circle { fill: var(--ink); stroke: var(--paper); stroke-width: 1.5; }
+g.am-step-badge text { fill: var(--paper); font: 600 var(--am-fs-d-badge) var(--font-sans, sans-serif); }
+.am-steps .am-tree-box { position: relative; }
+span.am-step-badge {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; min-width: var(--am-ln-treeBadge); height: var(--am-ln-treeBadge);
+  border-radius: 50%; background: var(--ink); color: var(--paper); font: 600 var(--am-fs-label)/1 var(--font-sans); text-indent: 0;
+}
+.am-tree-box > span.am-step-badge { position: absolute; top: -8px; inset-inline-start: -8px; }
+.am-tree-label > span.am-step-badge { margin-inline-end: 6px; vertical-align: 1px; }
+
+/* The list under the pair. */
+.am-steps-list { margin: 12px 0 0; padding-inline-start: 1.8em; font-size: var(--am-fs-text); color: var(--ink-2); }
+.am-steps-list li { margin: 3px 0; }
+.am-steps-item { font-weight: 600; color: var(--ink); }
+.am-steps-lines { font: var(--am-fs-small) var(--font-mono); color: var(--ink-3); margin-inline: 4px; }
+
+/* Explain mode (no code block): the list is the other side of the pair. Its numbers are text ("1. Item"), so it has no markers. */
+.am-steps-list--explain { list-style: none; margin: 0; padding: 0; }
+.am-steps-list--explain li { margin: 2px 0; }
+.am-steps-entry { padding: 6px 10px; border-inline-start: 3px solid transparent; border-radius: var(--radius); }
+
+/* The bar and the note are for the live page on screen: a page with no script has none, and a picture or print never shows them. */
+.am-steps-bar, .am-steps-note { display: none; }
+
+/* The hint is the first thing to go when the block is narrow: it would wrap under the buttons. */
+@container (max-width: 560px) { .am-steps-hint { display: none; } }
+
+/* Live: on screen only. */
+@media screen {
+  .am-steps--live .am-step-badge, .am-steps--live .am-ln[data-sn]::after, .am-steps--live:not([data-mode="explain"]) .am-steps-list { display: none; }
+  .am-steps--live .am-steps-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; font: var(--am-fs-small)/1.3 var(--font-sans); color: var(--ink-2); }
+  .am-steps-bar .am-btn { padding: 5px 9px; }
+  .am-steps-bar .am-btn:disabled { opacity: .5; cursor: default; }
+  .am-steps-count { min-width: 7em; text-align: center; font-variant-numeric: tabular-nums; }
+  .am-steps-hint { font-size: var(--am-fs-label); color: var(--ink-3); }
+
+  /* The lines of the selected step: a box, with its note above the first line. */
+  .am-steps--live .am-ln[data-link]::before { cursor: pointer; }
+  .am-steps--live .am-ln[data-link]:hover::before { color: var(--accent); }
+  .am-steps--live .am-ln.am-step-on { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); }
+  .am-steps--live .am-ln.am-step-first { box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent), inset 0 2px 0 var(--accent); }
+  .am-steps--live .am-ln.am-step-last { box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent), inset 0 -2px 0 var(--accent); }
+  .am-steps--live .am-ln.am-step-first.am-step-last { box-shadow: inset 0 0 0 2px var(--accent); }
+  .am-steps--live .am-steps-note {
+    display: block; box-sizing: border-box; margin: 6px 8px 4px; padding: 6px 10px; border-radius: var(--radius); text-indent: 0; white-space: normal;
+    background: var(--accent); color: var(--paper); font: var(--am-fs-small)/1.45 var(--font-sans); user-select: none;
+  }
+  .am-steps--live .am-steps-note strong { margin-inline-end: 0.35em; }
+  .am-steps--live .am-steps-note code { background: transparent; color: inherit; }
+
+  /* Explain mode, live: the entries of the list are buttons; the current one has an accent edge and tint, and its text the full ink colour so it keeps its contrast on the tint. */
+  .am-steps--live .am-steps-entry { cursor: pointer; }
+  .am-steps--live .am-steps-entry:hover { background: var(--accent-bg); color: var(--ink); }
+  .am-steps--live .am-steps-entry:focus { outline: none; }
+  .am-steps--live .am-steps-entry:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .am-steps--live .am-steps-entry.am-step-current { border-inline-start-color: var(--accent); background: var(--accent-bg); color: var(--ink); }
+
+  /* The items of the diagram a step names are buttons. */
+  .am-steps--live .am-node[data-link], .am-steps--live .am-tree-box[data-link], .am-steps--live .am-tree-label[data-link] { cursor: pointer; }
+  .am-steps--live .am-node[data-link]:hover .am-node-shape { stroke: var(--accent); }
+  .am-steps--live .am-node[data-link]:focus { outline: none; }
+  .am-steps--live .am-node[data-link]:focus-visible .am-node-shape { stroke: var(--accent); stroke-width: 3; }
+  .am-steps--live .am-tree-box[data-link]:hover { border-color: var(--accent); }
+  .am-steps--live .am-tree-box[data-link]:focus-visible, .am-steps--live .am-tree-label[data-link]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .am-steps--live .am-node.am-step-sel .am-node-shape { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 2.5; }
+  .am-steps--live .am-node.am-step-sel .am-node-text { fill: var(--accent); font-weight: 600; }
+  .am-steps--live .am-tree-box.am-step-sel { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .am-steps--live .am-tree-label.am-step-sel { color: var(--accent); font-weight: 600; }
+  .am-steps--live .am-edge.am-step-edge { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; animation: am-step-flow 0.9s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .am-steps--live .am-edge.am-step-edge { animation: none; } }
+}
+@keyframes am-step-flow { to { stroke-dashoffset: -20; } }
+`;
+var STEPS_JS = "// \u2500\u2500 Steps block: the bar, the boxes and the clicks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// The markup already carries every step (a number on its item and its first line, a list under the pair), so a page with no script still reads.\n// This script makes the block live: a bar with Previous, Next and the step count; a click on an item or on a line number boxes the lines of its\n// step and shows the note above them; the arrow keys move and Esc clears. The css hides the static numbers and the list while am-steps--live is on,\n// on screen only, so print and image export show the numbers. The block can take focus (tabindex -1), so a click on a line number leaves the keys working.\n// Explain mode (data-mode=\"explain\", no code): the list stays on the page and is the other side of the pair. Its entries become buttons, the\n// selected step marks its entry (aria-current=\"step\"), and there is no note. The page is not scrolled to the entry; focus() scrolls it when a key moved the focus.\n(() => {\n  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;\n  const fill = (text, values) => text.replace(/\\{(\\w+)\\}/g, (m, key) => (key in values ? String(values[key]) : m));\n\n  for (const root of document.querySelectorAll('.am-steps')) {\n    const total = Number(root.dataset.steps);\n    const linked = [...root.querySelectorAll('[data-link]')].filter((el) => !el.closest('.am-steps-list'));\n    const lines = linked.filter((el) => el.classList.contains('am-ln'));\n    const items = linked.filter((el) => !el.classList.contains('am-ln'));\n    const entries = [...root.querySelectorAll('.am-steps-entry[data-link]')];\n    for (const entry of entries) {\n      entry.setAttribute('role', 'button');\n      entry.tabIndex = 0;\n    }\n    const groups = [...root.querySelectorAll('g[data-ends]')].map((g) => ({ ends: g.dataset.ends.split(' '), edge: g.querySelector('.am-edge') }));\n\n    const button = (kind, label) => {\n      const b = document.createElement('button');\n      b.type = 'button';\n      b.className = 'am-btn';\n      b.dataset.steps = kind;\n      b.textContent = label;\n      b.setAttribute('aria-label', label.replace(/[\u2190\u2192]/g, '').trim());\n      return b;\n    };\n    const bar = document.createElement('div');\n    bar.className = 'am-steps-bar';\n    bar.dataset.exportSkip = '';\n    const prev = button('prev', root.dataset.prev);\n    const next = button('next', root.dataset.next);\n    const count = document.createElement('span');\n    count.className = 'am-steps-count';\n    count.setAttribute('aria-live', 'polite');\n    const hint = document.createElement('span');\n    hint.className = 'am-steps-hint';\n    hint.textContent = root.dataset.hint;\n    bar.setAttribute('role', 'group');\n    bar.setAttribute('aria-label', root.dataset.bar);\n    bar.append(prev, count, next, hint);\n    root.tabIndex = -1;\n    root.prepend(bar);\n    root.classList.add('am-steps--live');\n\n    let current = -1;\n    let note = null;\n    const of = (list, i) => list.filter((el) => el.dataset.link === String(i));\n    const listed = (i, part) => root.querySelector(`.am-steps-list [data-link=\"${i}\"] .am-steps-${part}`);\n\n    // A button that has the focus keeps the keys of the block only while it is enabled: the browser moves the focus of a disabled one out of the block.\n    const enable = (button, on) => {\n      if (!on && document.activeElement === button) root.focus({ preventScroll: true });\n      button.disabled = !on;\n    };\n\n    function select(i, { scroll = true } = {}) {\n      for (const el of root.querySelectorAll('.am-step-on')) el.classList.remove('am-step-on', 'am-step-first', 'am-step-last');\n      for (const el of items) el.classList.remove('am-step-sel');\n      for (const el of entries) {\n        el.classList.remove('am-step-current');\n        el.removeAttribute('aria-current');\n      }\n      for (const { edge } of groups) edge?.classList.remove('am-step-edge');\n      note?.remove();\n      note = null;\n      current = i;\n      enable(prev, i > 0);\n      enable(next, i < total - 1);\n      if (i < 0) {\n        count.textContent = root.dataset.idle;\n        return;\n      }\n      count.textContent = fill(root.dataset.count, { n: i + 1, m: total, item: listed(i, 'item')?.textContent ?? '' });\n      const boxed = of(lines, i);\n      for (const l of boxed) l.classList.add('am-step-on');\n      boxed[0]?.classList.add('am-step-first');\n      boxed.at(-1)?.classList.add('am-step-last');\n      for (const el of of(items, i)) el.classList.add('am-step-sel');\n      for (const el of of(entries, i)) {\n        el.classList.add('am-step-current');\n        el.setAttribute('aria-current', 'step');\n      }\n      for (const { ends, edge } of groups) if (ends.includes(String(i))) edge?.classList.add('am-step-edge');\n      if (boxed[0]) {\n        note = document.createElement('span');\n        note.className = 'am-steps-note';\n        note.dataset.exportSkip = '';\n        const head = document.createElement('strong');\n        head.append(`${i + 1}. `, ...listed(i, 'item').cloneNode(true).childNodes);\n        note.append(head);\n        const text = listed(i, 'text');\n        if (text) note.append(' ', ...text.cloneNode(true).childNodes);\n        boxed[0].before(note);\n      }\n      if (scroll) (note ?? boxed[0] ?? of(entries, i)[0])?.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });\n    }\n    const step = (by) => { if (by > 0 || current >= 0) select(Math.min(total - 1, Math.max(0, current + by))); };\n\n    // The number sits in the start padding of its line; a click on the code text is left to text selection.\n    const inGutter = (line, e) => {\n      const style = getComputedStyle(line);\n      const rect = line.getBoundingClientRect();\n      const x = style.direction === 'rtl' ? rect.right - e.clientX : e.clientX - rect.left;\n      return x <= parseFloat(style.paddingInlineStart) - 6;\n    };\n\n    root.addEventListener('click', (e) => {\n      const pressed = e.target.closest('.am-steps-bar button');\n      if (pressed) return step(pressed.dataset.steps === 'next' ? 1 : -1);\n      const el = e.target.closest('[data-link]');\n      if (!el || (el.closest('.am-steps-list') && !el.classList.contains('am-steps-entry')) || e.target.closest('a')) return;\n      const isLine = el.classList.contains('am-ln');\n      if (isLine && !inGutter(el, e)) return;\n      select(Number(el.dataset.link), { scroll: !isLine });\n      if (isLine) root.focus({ preventScroll: true });\n    });\n    root.addEventListener('keydown', (e) => {\n      if (e.target.closest('input, textarea, select') || e.altKey || e.ctrlKey || e.metaKey) return;\n      const el = e.target.closest('[data-link]');\n      const pickable = el && !el.classList.contains('am-ln') && (!el.closest('.am-steps-list') || el.classList.contains('am-steps-entry'));\n      const item = pickable && !e.target.closest('a') ? el : null;\n      if (item && (e.key === 'Enter' || e.key === ' ')) {\n        e.preventDefault();\n        select(Number(item.dataset.link));\n      } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {\n        e.preventDefault();\n        const rtl = getComputedStyle(root).direction === 'rtl';\n        step((e.key === 'ArrowRight') !== rtl ? 1 : -1);\n        if (item) (item.classList.contains('am-steps-entry') ? of(entries, current) : of(items, current))[0]?.focus();\n      } else if (e.key === 'Escape') {\n        select(-1);\n      }\n    });\n    select(-1);\n  }\n})();\n";
 var UPDATE_CSS = "/* New-version button and popover (src/render.js adds this file only to a page that has the button). The popover sits under the\n   toolbar and stays hidden unless open, so a browser without native popovers never shows it. */\n.am-btn--update { color: var(--ok); border-color: var(--ok); white-space: nowrap; }\n.am-update { display: none; }\n.am-update:popover-open {\n  display: block; position: fixed; inset-block: 52px auto; inset-inline: auto 12px; margin: 0; width: min(380px, calc(100vw - 24px));\n  padding: 14px 16px; font-size: var(--am-fs-text); color: var(--ink); background: var(--paper);\n  border: 1px solid var(--line-2); border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,.25);\n}\n.am-update p { margin: 0 0 8px; }\n.am-update-title { font-weight: 600; color: var(--ok); }\n.am-update-label { color: var(--ink-2); font-size: var(--am-fs-small); }\n.am-update-notes { margin: 0 0 12px; padding-inline-start: 18px; }\n.am-update-notes li { margin: 2px 0; }\n.am-update-notes code { font-size: var(--am-fs-small); }\n.am-update-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }\n.am-update-row > :first-child {\n  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: var(--am-fs-small); padding: 6px 8px;\n  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);\n}\n.am-update a { color: var(--accent); font-size: var(--am-fs-small); }\n/* A phone has no room for the words: the button keeps only its dot, and its aria-label still names the version. */\n@media (max-width: 760px) {\n  .am-btn--update .am-update-text { display: none; }\n}\n@media print {\n  .am-update { display: none !important; }\n}\n";
 var UPDATE_JS = `// Pages with a new-version button only: src/render.js adds this script after the page script.
 // The button shows where the browser has native popovers (they open and close the popover with no script). A page that am serve
@@ -1331,7 +1466,7 @@ var CLOSE_AFTER_JS = `// Pages made with the close_after_reply setting only: src
 })();
 `;
 var VIDEO_CSS = `/* Video player: the 1920\xD71080 stage scales to the window. All colors come from theme variables.
-   Theme-specific video tokens and decorations live in each theme's definition (themes/<name>.js). */
+   Theme-specific video tokens and decorations live in each theme's definition (themes/{name}.js). */
 html[data-video] {
   /* Player controls stay out of the picture and ignore the theme: one fixed set of dark tokens */
   --v-ctl-bg: #0b0d11; --v-ctl-line: #1d2330; --v-ctl-fg: #c9d1dc; --v-ctl-muted: #5b6576;
@@ -1497,7 +1632,7 @@ var VIDEO_EXPORT_JS = "// The export engine for the path that has no ffmpeg: the
 var VIDEO_MUX_JS = "// Minimal WebM (Matroska) writer for the export path that has no ffmpeg: the browser encodes the frames (WebCodecs,\n// see src/runtime/video.js) and this module writes the container. One VP8/VP9 video track and an optional Opus audio\n// track. The blocks are buffered, sorted by time and cut into clusters of about a second, so the sound and the\n// picture of a moment sit next to each other in the file. The Segment and the Clusters carry the unknown size, which\n// is how a stream is written: nothing needs to be measured first and nothing is patched afterwards.\n// Plain bytes only (no Buffer, no imports), so the same source runs in Node and inside a page (scripts/inline-assets.mjs\n// turns it into a script for the player page).\nconst APP = 'answer-me-with-html';   // MuxingApp / WritingApp\nconst CLUSTER_MS = 1000;              // how much time one cluster holds\nconst SEEK_PRE_ROLL_NS = 80_000_000;  // what the Opus specification asks for\n\nconst ID = {\n  EBML: [0x1a, 0x45, 0xdf, 0xa3],\n  EBMLVersion: [0x42, 0x86], EBMLReadVersion: [0x42, 0xf7], EBMLMaxIDLength: [0x42, 0xf2], EBMLMaxSizeLength: [0x42, 0xf3],\n  DocType: [0x42, 0x82], DocTypeVersion: [0x42, 0x87], DocTypeReadVersion: [0x42, 0x85],\n  Segment: [0x18, 0x53, 0x80, 0x67], Info: [0x15, 0x49, 0xa9, 0x66], TimecodeScale: [0x2a, 0xd7, 0xb1],\n  MuxingApp: [0x4d, 0x80], WritingApp: [0x57, 0x41], Duration: [0x44, 0x89],\n  Tracks: [0x16, 0x54, 0xae, 0x6b], TrackEntry: [0xae], TrackNumber: [0xd7], TrackUID: [0x73, 0xc5], FlagLacing: [0x9c],\n  CodecID: [0x86], TrackType: [0x83], Video: [0xe0], PixelWidth: [0xb0], PixelHeight: [0xba],\n  Audio: [0xe1], SamplingFrequency: [0xb5], Channels: [0x9f], CodecPrivate: [0x63, 0xa2],\n  CodecDelay: [0x56, 0xaa], SeekPreRoll: [0x56, 0xbb],\n  Cluster: [0x1f, 0x43, 0xb6, 0x75], Timecode: [0xe7], SimpleBlock: [0xa3],\n};\nconst UNKNOWN_SIZE = new Uint8Array([0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);\n\nconst concat = (parts) => {\n  let total = 0;\n  for (const p of parts) total += p.length;\n  const out = new Uint8Array(total);\n  let at = 0;\n  for (const p of parts) { out.set(p, at); at += p.length; }\n  return out;\n};\nconst bytes = (id) => new Uint8Array(id);\nconst text = (s) => new TextEncoder().encode(s);\n\n// Element size as a variable-size integer, in the shortest length that fits; the all-ones value is reserved.\nfunction size(n) {\n  for (let len = 1; len <= 8; len++) {\n    if (len === 8 || n < 2 ** (7 * len) - 1) {\n      const out = new Uint8Array(len);\n      let v = n;\n      for (let i = len - 1; i >= 0; i--) {\n        out[i] = v & 0xff;\n        v = Math.floor(v / 256);\n      }\n      out[0] |= 0x80 >> (len - 1);\n      return out;\n    }\n  }\n}\n\n// Unsigned integer, big endian, as short as it can be (a Matroska integer drops leading zero bytes).\nfunction uint(n) {\n  const out = [];\n  let v = Math.round(n);\n  do {\n    out.unshift(v & 0xff);\n    v = Math.floor(v / 256);\n  } while (v > 0);\n  return new Uint8Array(out);\n}\n\nfunction f64(x) {\n  const out = new Uint8Array(8);\n  new DataView(out.buffer).setFloat64(0, x);\n  return out;\n}\n\nconst elem = (id, payload) => concat([bytes(id), size(payload.length), payload]);\n\n// WebM writer. video: { width, height, codec } with codec 'V_VP9' or 'V_VP8'; audio: null or\n// { channels, codecPrivate, preSkipSamples }. Duration is written up front, so a player knows the length at once.\nclass WebmWriter {\n  constructor({ width, height, durationMs, videoCodec = 'V_VP9', audio = null }) {\n    this.width = width;\n    this.height = height;\n    this.durationMs = durationMs;\n    this.videoCodec = videoCodec;\n    this.audio = audio;\n    this.blocks = [];\n  }\n\n  // track 1 is the picture, track 2 the sound. key marks a key frame; tsUs is the time in microseconds.\n  block({ track, key, tsUs, data }) {\n    this.blocks.push({ track, key: Boolean(key), ms: Math.round(tsUs / 1000), data });\n  }\n\n  count(track) {\n    return this.blocks.reduce((n, b) => n + (b.track === track ? 1 : 0), 0);\n  }\n\n  build() {\n    const parts = [\n      elem(ID.EBML, concat([\n        elem(ID.EBMLVersion, uint(1)),\n        elem(ID.EBMLReadVersion, uint(1)),\n        elem(ID.EBMLMaxIDLength, uint(4)),\n        elem(ID.EBMLMaxSizeLength, uint(8)),\n        elem(ID.DocType, text('webm')),\n        elem(ID.DocTypeVersion, uint(4)),\n        elem(ID.DocTypeReadVersion, uint(2)),\n      ])),\n      concat([bytes(ID.Segment), UNKNOWN_SIZE]),\n      elem(ID.Info, concat([\n        elem(ID.TimecodeScale, uint(1_000_000)),\n        elem(ID.MuxingApp, text(APP)),\n        elem(ID.WritingApp, text(APP)),\n        elem(ID.Duration, f64(this.durationMs)),\n      ])),\n      elem(ID.Tracks, concat([this.#videoTrack(), ...(this.audio ? [this.#audioTrack()] : [])])),\n    ];\n    for (const cluster of this.#clusters()) parts.push(cluster);\n    return concat(parts);\n  }\n\n  #track(num, type, codecId, extra) {\n    return elem(ID.TrackEntry, concat([\n      elem(ID.TrackNumber, uint(num)),\n      elem(ID.TrackUID, uint(num)),\n      elem(ID.FlagLacing, uint(0)),\n      elem(ID.CodecID, text(codecId)),\n      elem(ID.TrackType, uint(type)),\n      ...extra,\n    ]));\n  }\n\n  #videoTrack() {\n    return this.#track(1, 1, this.videoCodec, [\n      elem(ID.Video, concat([elem(ID.PixelWidth, uint(this.width)), elem(ID.PixelHeight, uint(this.height))])),\n    ]);\n  }\n\n  #audioTrack() {\n    const { channels, codecPrivate, preSkipSamples } = this.audio;\n    const extra = [elem(ID.Audio, concat([elem(ID.SamplingFrequency, f64(48000)), elem(ID.Channels, uint(channels))]))];\n    if (codecPrivate) extra.unshift(elem(ID.CodecPrivate, codecPrivate));\n    // The encoder adds pre-skip samples of silence; CodecDelay tells the player to drop them again.\n    extra.push(elem(ID.CodecDelay, uint((preSkipSamples / 48000) * 1e9)), elem(ID.SeekPreRoll, uint(SEEK_PRE_ROLL_NS)));\n    return this.#track(2, 2, 'A_OPUS', extra);\n  }\n\n  #clusters() {\n    const blocks = [...this.blocks].sort((a, b) => a.ms - b.ms || a.track - b.track);\n    const out = [];\n    for (let i = 0; i < blocks.length; ) {\n      const start = blocks[i].ms;\n      const body = [elem(ID.Timecode, uint(start))];\n      while (i < blocks.length && blocks[i].ms - start <= CLUSTER_MS) {\n        body.push(this.#block(blocks[i], start));\n        i++;\n      }\n      out.push(concat([bytes(ID.Cluster), UNKNOWN_SIZE, ...body]));\n    }\n    return out;\n  }\n\n  #block(b, clusterStart) {\n    const head = new Uint8Array(4);\n    head[0] = 0x80 | b.track;                 // the track number as a variable-size integer\n    new DataView(head.buffer).setInt16(1, b.ms - clusterStart);\n    head[3] = b.key ? 0x80 : 0x00;\n    return elem(ID.SimpleBlock, concat([head, b.data]));\n  }\n}\n\nwindow.__amvWebm = { WebmWriter };\n";
 
 // src/cli.js
-import { join as join13, resolve as resolve8, relative as relative3, isAbsolute as isAbsolute5, dirname as dirname5, basename as basename6, extname as extname3, sep as sep5 } from "node:path";
+import { join as join14, resolve as resolve8, relative as relative4, isAbsolute as isAbsolute6, dirname as dirname5, basename as basename6, extname as extname3, sep as sep6 } from "node:path";
 import { spawn as spawn5 } from "node:child_process";
 import { randomBytes as randomBytes2 } from "node:crypto";
 
@@ -1523,11 +1658,15 @@ var zh_default = {
     modeLabel: "\u660E\u6697",
     mode: { auto: "\u8DDF\u968F\u7CFB\u7EDF", light: "\u4EAE", dark: "\u6697" },
     scale: { down: "\u7F29\u5C0F\u6587\u5B57", up: "\u653E\u5927\u6587\u5B57" },
-    image: {
-      button: "\u590D\u5236\u4E3A\u56FE\u7247",
-      working: "\u6B63\u5728\u751F\u6210\u56FE\u7247\u2026",
-      done: "\u5DF2\u590D\u5236 \u2713",
-      failed: "\u590D\u5236\u5931\u8D25",
+    export: {
+      button: "\u5BFC\u51FA",
+      copy: "\u590D\u5236\u4E3A\u56FE\u7247",
+      download: "\u4E0B\u8F7D PNG",
+      pdf: "\u4FDD\u5B58\u4E3A PDF",
+      working: "\u6B63\u5728\u751F\u6210\u2026",
+      copied: "\u5DF2\u590D\u5236 \u2713",
+      saved: "\u5DF2\u4FDD\u5B58 \u2713",
+      failed: "\u5BFC\u51FA\u5931\u8D25",
       unavailableBrowser: "\u5F53\u524D\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u5BFC\u51FA\u56FE\u7247\u3002",
       unavailableClipboard: "\u5F53\u524D\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u5199\u5165\u526A\u8D34\u677F\u3002",
       unavailablePolicy: "\u5F53\u524D\u9884\u89C8\u7A97\u53E3\u672A\u5F00\u542F\u526A\u8D34\u677F\u6743\u9650\uFF0C\u4E0D\u652F\u6301\u590D\u5236\u3002",
@@ -1535,6 +1674,7 @@ var zh_default = {
     },
     copy: "\u590D\u5236\u6E90\u7A3F",
     done: "\u5DF2\u590D\u5236 \u2713",
+    failed: "\u590D\u5236\u5931\u8D25",
     copyCode: "\u590D\u5236",
     update: { button: "\u65B0\u7248\u672C {version}", current: "\u5F53\u524D {current}\u3002\u751F\u6210\u6B64\u9875\u65F6\u68C0\u6D4B\u5230\u65B0\u7248\u672C\u3002", whatsNew: "\u8FD9\u6B21\u66F4\u65B0\uFF1A", run: "\u5728\u7EC8\u7AEF\u8FD0\u884C\uFF1A", agent: "\u6216\u8005\u544A\u8BC9 Agent\uFF1A", agentText: "\u66F4\u65B0 answer-me-with-html", notes: "\u67E5\u770B\u66F4\u65B0\u5185\u5BB9" },
     live: { updated: "\u9875\u9762\u5DF2\u66F4\u65B0", reload: "\u5237\u65B0" },
@@ -1576,7 +1716,8 @@ var zh_default = {
     limits: { value: "{value} / max {limit}", limit: "max {limit}" },
     chart: { name: "\u56FE\u8868", data: "\u6570\u636E", value: "\u6570\u503C", share: "\u5360\u6BD4" },
     api: { path: "\u8DEF\u5F84\u53C2\u6570", query: "\u67E5\u8BE2\u53C2\u6570", headers: "\u8BF7\u6C42\u5934", request: "\u8BF7\u6C42", response: "\u54CD\u5E94", field: "\u5B57\u6BB5", type: "\u7C7B\u578B", description: "\u8BF4\u660E", requirement: "\u5FC5\u586B\u6027", required: "\u5FC5\u586B", optional: "\u53EF\u9009" },
-    table: { filter: "\u7B5B\u9009\u8868\u683C" }
+    table: { filter: "\u7B5B\u9009\u8868\u683C" },
+    steps: { prev: "\u2190 \u4E0A\u4E00\u6B65", next: "\u4E0B\u4E00\u6B65 \u2192", count: "\u7B2C {n} \u6B65\uFF0C\u5171 {m} \u6B65\uFF1A{item}", hint: "\u70B9\u8282\u70B9\u6216\u884C\u53F7\uFF1B\u2190 \u2192 \u5207\u6362\uFF0CEsc \u53D6\u6D88", hintExplain: "\u70B9\u8282\u70B9\u6216\u8BB2\u89E3\uFF1B\u2190 \u2192 \u5207\u6362\uFF0CEsc \u53D6\u6D88", bar: "\u6B65\u9AA4\u63A7\u5236", idle: "\u5171 {m} \u6B65", node: "\u7B2C {n} \u6B65\uFF1A{item}", list: "\u6B65\u9AA4", line: "\u7B2C {n} \u884C", lines: "\u7B2C {from}-{to} \u884C" }
   },
   videoUi: {
     play: "\u64AD\u653E",
@@ -1619,11 +1760,15 @@ var zh_Hant_default = {
     modeLabel: "\u660E\u6697",
     mode: { auto: "\u8DDF\u96A8\u7CFB\u7D71", light: "\u6DFA\u8272", dark: "\u6DF1\u8272" },
     scale: { down: "\u7E2E\u5C0F\u6587\u5B57", up: "\u653E\u5927\u6587\u5B57" },
-    image: {
-      button: "\u8907\u88FD\u70BA\u5716\u7247",
-      working: "\u6B63\u5728\u7522\u751F\u5716\u7247\u2026",
-      done: "\u5DF2\u8907\u88FD \u2713",
-      failed: "\u8907\u88FD\u5931\u6557",
+    export: {
+      button: "\u532F\u51FA",
+      copy: "\u8907\u88FD\u70BA\u5716\u7247",
+      download: "\u4E0B\u8F09 PNG",
+      pdf: "\u5132\u5B58\u70BA PDF",
+      working: "\u6B63\u5728\u7522\u751F\u2026",
+      copied: "\u5DF2\u8907\u88FD \u2713",
+      saved: "\u5DF2\u5132\u5B58 \u2713",
+      failed: "\u532F\u51FA\u5931\u6557",
       unavailableBrowser: "\u76EE\u524D\u700F\u89BD\u5668\u4E0D\u652F\u63F4\u532F\u51FA\u5716\u7247\u3002",
       unavailableClipboard: "\u76EE\u524D\u700F\u89BD\u5668\u4E0D\u652F\u63F4\u5BEB\u5165\u526A\u8CBC\u7C3F\u3002",
       unavailablePolicy: "\u76EE\u524D\u9810\u89BD\u8996\u7A97\u672A\u958B\u555F\u526A\u8CBC\u7C3F\u6B0A\u9650\uFF0C\u4E0D\u652F\u63F4\u8907\u88FD\u3002",
@@ -1631,6 +1776,7 @@ var zh_Hant_default = {
     },
     copy: "\u8907\u88FD\u6E90\u7A3F",
     done: "\u5DF2\u8907\u88FD \u2713",
+    failed: "\u8907\u88FD\u5931\u6557",
     copyCode: "\u8907\u88FD",
     update: { button: "\u65B0\u7248\u672C {version}", current: "\u76EE\u524D {current}\u3002\u7522\u751F\u6B64\u9801\u6642\u5075\u6E2C\u5230\u65B0\u7248\u672C\u3002", whatsNew: "\u9019\u6B21\u66F4\u65B0\uFF1A", run: "\u5728\u7D42\u7AEF\u6A5F\u57F7\u884C\uFF1A", agent: "\u6216\u8005\u544A\u8A34 Agent\uFF1A", agentText: "\u66F4\u65B0 answer-me-with-html", notes: "\u67E5\u770B\u66F4\u65B0\u5167\u5BB9" },
     live: { updated: "\u9801\u9762\u5DF2\u66F4\u65B0", reload: "\u91CD\u65B0\u6574\u7406" },
@@ -1672,7 +1818,8 @@ var zh_Hant_default = {
     limits: { value: "{value} / max {limit}", limit: "max {limit}" },
     chart: { name: "\u5716\u8868", data: "\u8CC7\u6599", value: "\u6578\u503C", share: "\u5360\u6BD4" },
     api: { path: "\u8DEF\u5F91\u53C3\u6578", query: "\u67E5\u8A62\u53C3\u6578", headers: "\u8ACB\u6C42\u6A19\u982D", request: "\u8ACB\u6C42", response: "\u56DE\u61C9", field: "\u6B04\u4F4D", type: "\u578B\u5225", description: "\u8AAA\u660E", requirement: "\u5FC5\u586B\u6027", required: "\u5FC5\u586B", optional: "\u9078\u586B" },
-    table: { filter: "\u7BE9\u9078\u8868\u683C" }
+    table: { filter: "\u7BE9\u9078\u8868\u683C" },
+    steps: { prev: "\u2190 \u4E0A\u4E00\u6B65", next: "\u4E0B\u4E00\u6B65 \u2192", count: "\u7B2C {n} \u6B65\uFF0C\u5171 {m} \u6B65\uFF1A{item}", hint: "\u9EDE\u7BC0\u9EDE\u6216\u884C\u865F\uFF1B\u2190 \u2192 \u5207\u63DB\uFF0CEsc \u53D6\u6D88", hintExplain: "\u9EDE\u7BC0\u9EDE\u6216\u8B1B\u89E3\uFF1B\u2190 \u2192 \u5207\u63DB\uFF0CEsc \u53D6\u6D88", bar: "\u6B65\u9A5F\u63A7\u5236", idle: "\u5171 {m} \u6B65", node: "\u7B2C {n} \u6B65\uFF1A{item}", list: "\u6B65\u9A5F", line: "\u7B2C {n} \u884C", lines: "\u7B2C {from}-{to} \u884C" }
   },
   videoUi: {
     play: "\u64AD\u653E",
@@ -1709,11 +1856,15 @@ var en_default = {
     modeLabel: "Mode",
     mode: { auto: "Auto", light: "Light", dark: "Dark" },
     scale: { down: "Smaller text", up: "Larger text" },
-    image: {
-      button: "Copy as image",
-      working: "Rendering image\u2026",
-      done: "Copied \u2713",
-      failed: "Copy failed",
+    export: {
+      button: "Export",
+      copy: "Copy as image",
+      download: "Download PNG",
+      pdf: "Save as PDF",
+      working: "Rendering\u2026",
+      copied: "Copied \u2713",
+      saved: "Saved \u2713",
+      failed: "Export failed",
       unavailableBrowser: "This browser cannot export the page as an image.",
       unavailableClipboard: "This browser cannot write the image to the clipboard.",
       unavailablePolicy: "This preview does not allow copying.",
@@ -1721,6 +1872,7 @@ var en_default = {
     },
     copy: "Copy source",
     done: "Copied \u2713",
+    failed: "Copy failed",
     copyCode: "Copy",
     update: { button: "New version {version}", current: "You have {current}. Found when this page was made.", whatsNew: "What's new:", run: "Run in a terminal:", agent: "Or tell your agent:", agentText: "Update answer-me-with-html", notes: "See what's new" },
     live: { updated: "Page updated", reload: "Reload" },
@@ -1762,7 +1914,8 @@ var en_default = {
     limits: { value: "{value} / max {limit}", limit: "max {limit}" },
     chart: { name: "Chart", data: "Data", value: "Value", share: "Share" },
     api: { path: "Path parameters", query: "Query parameters", headers: "Headers", request: "Request", response: "Response", field: "Field", type: "Type", description: "Description", requirement: "Requirement", required: "Required", optional: "Optional" },
-    table: { filter: "Filter table" }
+    table: { filter: "Filter table" },
+    steps: { prev: "\u2190 Previous", next: "Next \u2192", count: "Step {n} of {m}: {item}", hint: "Click an item or a line number; \u2190 \u2192 to move, Esc to clear", hintExplain: "Click an item or a step; \u2190 \u2192 to move, Esc to clear", bar: "Step controls", idle: "{m} steps", node: "Step {n}: {item}", list: "Steps", line: "Line {n}", lines: "Lines {from}-{to}" }
   },
   // Player labels. drawn..duration are the title block cells; sheet is the scene header, with {n} and {total} the zero-padded numbers.
   videoUi: {
@@ -1805,11 +1958,15 @@ var ja_default = {
     modeLabel: "\u8868\u793A",
     mode: { auto: "\u81EA\u52D5", light: "\u30E9\u30A4\u30C8", dark: "\u30C0\u30FC\u30AF" },
     scale: { down: "\u6587\u5B57\u3092\u5C0F\u3055\u304F", up: "\u6587\u5B57\u3092\u5927\u304D\u304F" },
-    image: {
-      button: "\u753B\u50CF\u3068\u3057\u3066\u30B3\u30D4\u30FC",
-      working: "\u753B\u50CF\u3092\u751F\u6210\u4E2D\u2026",
-      done: "\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F \u2713",
-      failed: "\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093",
+    export: {
+      button: "\u66F8\u304D\u51FA\u3057",
+      copy: "\u753B\u50CF\u3068\u3057\u3066\u30B3\u30D4\u30FC",
+      download: "PNG \u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9",
+      pdf: "PDF \u3068\u3057\u3066\u4FDD\u5B58",
+      working: "\u751F\u6210\u4E2D\u2026",
+      copied: "\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F \u2713",
+      saved: "\u4FDD\u5B58\u3057\u307E\u3057\u305F \u2713",
+      failed: "\u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
       unavailableBrowser: "\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u306F\u753B\u50CF\u3092\u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3002",
       unavailableClipboard: "\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u306F\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u753B\u50CF\u3092\u66F8\u304D\u8FBC\u3081\u307E\u305B\u3093\u3002",
       unavailablePolicy: "\u3053\u306E\u30D7\u30EC\u30D3\u30E5\u30FC\u3067\u306F\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u6A29\u9650\u304C\u306A\u3044\u305F\u3081\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3002",
@@ -1817,6 +1974,7 @@ var ja_default = {
     },
     copy: "\u539F\u7A3F\u3092\u30B3\u30D4\u30FC",
     done: "\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F \u2713",
+    failed: "\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093",
     copyCode: "\u30B3\u30D4\u30FC",
     update: { button: "\u65B0\u30D0\u30FC\u30B8\u30E7\u30F3 {version}", current: "\u73FE\u5728\u306F {current}\u3002\u3053\u306E\u30DA\u30FC\u30B8\u306E\u4F5C\u6210\u6642\u306B\u898B\u3064\u304B\u308A\u307E\u3057\u305F\u3002", whatsNew: "\u4ECA\u56DE\u306E\u66F4\u65B0\uFF1A", run: "\u30BF\u30FC\u30DF\u30CA\u30EB\u3067\u5B9F\u884C\uFF1A", agent: "\u307E\u305F\u306F Agent \u306B\u4F1D\u3048\u308B\uFF1A", agentText: "answer-me-with-html \u3092\u66F4\u65B0\u3057\u3066", notes: "\u66F4\u65B0\u5185\u5BB9\u3092\u898B\u308B" },
     live: { updated: "\u30DA\u30FC\u30B8\u304C\u66F4\u65B0\u3055\u308C\u307E\u3057\u305F", reload: "\u518D\u8AAD\u307F\u8FBC\u307F" },
@@ -1858,7 +2016,8 @@ var ja_default = {
     limits: { value: "{value} / max {limit}", limit: "max {limit}" },
     chart: { name: "\u30B0\u30E9\u30D5", data: "\u30C7\u30FC\u30BF", value: "\u5024", share: "\u5272\u5408" },
     api: { path: "\u30D1\u30B9\u30D1\u30E9\u30E1\u30FC\u30BF\u30FC", query: "\u30AF\u30A8\u30EA\u30D1\u30E9\u30E1\u30FC\u30BF\u30FC", headers: "\u30D8\u30C3\u30C0\u30FC", request: "\u30EA\u30AF\u30A8\u30B9\u30C8", response: "\u30EC\u30B9\u30DD\u30F3\u30B9", field: "\u30D5\u30A3\u30FC\u30EB\u30C9", type: "\u578B", description: "\u8AAC\u660E", requirement: "\u5FC5\u9808\u30FB\u4EFB\u610F", required: "\u5FC5\u9808", optional: "\u4EFB\u610F" },
-    table: { filter: "\u8868\u3092\u7D5E\u308A\u8FBC\u3080" }
+    table: { filter: "\u8868\u3092\u7D5E\u308A\u8FBC\u3080" },
+    steps: { prev: "\u2190 \u524D\u3078", next: "\u6B21\u3078 \u2192", count: "\u30B9\u30C6\u30C3\u30D7 {n} / {m}\uFF1A{item}", hint: "\u9805\u76EE\u304B\u884C\u756A\u53F7\u3092\u30AF\u30EA\u30C3\u30AF\u3002\u2190 \u2192 \u3067\u79FB\u52D5\u3001Esc \u3067\u89E3\u9664", hintExplain: "\u9805\u76EE\u304B\u89E3\u8AAC\u3092\u30AF\u30EA\u30C3\u30AF\u3002\u2190 \u2192 \u3067\u79FB\u52D5\u3001Esc \u3067\u89E3\u9664", bar: "\u30B9\u30C6\u30C3\u30D7\u306E\u64CD\u4F5C", idle: "\u5168 {m} \u30B9\u30C6\u30C3\u30D7", node: "\u30B9\u30C6\u30C3\u30D7 {n}\uFF1A{item}", list: "\u30B9\u30C6\u30C3\u30D7", line: "{n} \u884C\u76EE", lines: "{from}-{to} \u884C\u76EE" }
   },
   videoUi: {
     play: "\u518D\u751F",
@@ -1899,11 +2058,15 @@ var he_default = {
     modeLabel: "\u05DE\u05E6\u05D1",
     mode: { auto: "\u05D0\u05D5\u05D8\u05D5\u05DE\u05D8\u05D9", light: "\u05D1\u05D4\u05D9\u05E8", dark: "\u05DB\u05D4\u05D4" },
     scale: { down: "\u05D4\u05E7\u05D8\u05E0\u05EA \u05D4\u05D8\u05E7\u05E1\u05D8", up: "\u05D4\u05D2\u05D3\u05DC\u05EA \u05D4\u05D8\u05E7\u05E1\u05D8" },
-    image: {
-      button: "\u05D4\u05E2\u05EA\u05E7\u05D4 \u05DB\u05EA\u05DE\u05D5\u05E0\u05D4",
-      working: "\u05D9\u05D5\u05E6\u05E8 \u05EA\u05DE\u05D5\u05E0\u05D4\u2026",
-      done: "\u05D4\u05D5\u05E2\u05EA\u05E7 \u2713",
-      failed: "\u05D4\u05D4\u05E2\u05EA\u05E7\u05D4 \u05E0\u05DB\u05E9\u05DC\u05D4",
+    export: {
+      button: "\u05D9\u05D9\u05E6\u05D5\u05D0",
+      copy: "\u05D4\u05E2\u05EA\u05E7\u05D4 \u05DB\u05EA\u05DE\u05D5\u05E0\u05D4",
+      download: "\u05D4\u05D5\u05E8\u05D3\u05EA PNG",
+      pdf: "\u05E9\u05DE\u05D9\u05E8\u05D4 \u05DB-PDF",
+      working: "\u05DE\u05DB\u05D9\u05DF\u2026",
+      copied: "\u05D4\u05D5\u05E2\u05EA\u05E7 \u2713",
+      saved: "\u05E0\u05E9\u05DE\u05E8 \u2713",
+      failed: "\u05D4\u05D9\u05D9\u05E6\u05D5\u05D0 \u05E0\u05DB\u05E9\u05DC",
       unavailableBrowser: "\u05D4\u05D3\u05E4\u05D3\u05E4\u05DF \u05D4\u05D6\u05D4 \u05D0\u05D9\u05E0\u05D5 \u05D9\u05DB\u05D5\u05DC \u05DC\u05D9\u05D9\u05E6\u05D0 \u05D0\u05EA \u05D4\u05E2\u05DE\u05D5\u05D3 \u05DB\u05EA\u05DE\u05D5\u05E0\u05D4.",
       unavailableClipboard: "\u05D4\u05D3\u05E4\u05D3\u05E4\u05DF \u05D4\u05D6\u05D4 \u05D0\u05D9\u05E0\u05D5 \u05D9\u05DB\u05D5\u05DC \u05DC\u05DB\u05EA\u05D5\u05D1 \u05D0\u05EA \u05D4\u05EA\u05DE\u05D5\u05E0\u05D4 \u05DC\u05DC\u05D5\u05D7.",
       unavailablePolicy: "\u05D4\u05EA\u05E6\u05D5\u05D2\u05D4 \u05D4\u05DE\u05E7\u05D3\u05D9\u05DE\u05D4 \u05D4\u05D6\u05D5 \u05D0\u05D9\u05E0\u05D4 \u05DE\u05D0\u05E4\u05E9\u05E8\u05EA \u05D4\u05E2\u05EA\u05E7\u05D4.",
@@ -1911,6 +2074,7 @@ var he_default = {
     },
     copy: "\u05D4\u05E2\u05EA\u05E7\u05EA \u05D4\u05DE\u05E7\u05D5\u05E8",
     done: "\u05D4\u05D5\u05E2\u05EA\u05E7 \u2713",
+    failed: "\u05D4\u05D4\u05E2\u05EA\u05E7\u05D4 \u05E0\u05DB\u05E9\u05DC\u05D4",
     copyCode: "\u05D4\u05E2\u05EA\u05E7\u05D4",
     update: { button: "\u05D2\u05E8\u05E1\u05D4 \u05D7\u05D3\u05E9\u05D4 {version}", current: "\u05D4\u05D2\u05E8\u05E1\u05D4 \u05E9\u05DC\u05DB\u05DD {current}. \u05D4\u05D2\u05E8\u05E1\u05D4 \u05D4\u05D7\u05D3\u05E9\u05D4 \u05E0\u05DE\u05E6\u05D0\u05D4 \u05DB\u05E9\u05D4\u05D3\u05E3 \u05E0\u05D5\u05E6\u05E8.", whatsNew: "\u05DE\u05D4 \u05D7\u05D3\u05E9 \u05D1\u05D2\u05E8\u05E1\u05D4:", run: "\u05D4\u05E8\u05D9\u05E6\u05D5 \u05D1\u05D8\u05E8\u05DE\u05D9\u05E0\u05DC:", agent: "\u05D0\u05D5 \u05D1\u05E7\u05E9\u05D5 \u05DE\u05D4-Agent:", agentText: "\u05E2\u05D3\u05DB\u05DF \u05D0\u05EA answer-me-with-html", notes: "\u05DE\u05D4 \u05D7\u05D3\u05E9" },
     live: { updated: "\u05D4\u05D3\u05E3 \u05E2\u05D5\u05D3\u05DB\u05DF", reload: "\u05E8\u05E2\u05E0\u05D5\u05DF" },
@@ -1952,7 +2116,8 @@ var he_default = {
     limits: { value: "{value} \u05DE\u05EA\u05D5\u05DA {limit}", limit: "\u05E2\u05D3 {limit}" },
     chart: { name: "\u05EA\u05E8\u05E9\u05D9\u05DD", data: "\u05E0\u05EA\u05D5\u05E0\u05D9\u05DD", value: "\u05E2\u05E8\u05DA", share: "\u05D7\u05DC\u05E7" },
     api: { path: "\u05E4\u05E8\u05DE\u05D8\u05E8\u05D9\u05DD \u05D1\u05E0\u05EA\u05D9\u05D1", query: "\u05E4\u05E8\u05DE\u05D8\u05E8\u05D9\u05DD \u05D1\u05E9\u05D0\u05D9\u05DC\u05EA\u05D4", headers: "\u05DB\u05D5\u05EA\u05E8\u05D5\u05EA", request: "\u05D1\u05E7\u05E9\u05D4", response: "\u05EA\u05D2\u05D5\u05D1\u05D4", field: "\u05E9\u05D3\u05D4", type: "\u05D8\u05D9\u05E4\u05D5\u05E1", description: "\u05EA\u05D9\u05D0\u05D5\u05E8", requirement: "\u05D3\u05E8\u05D9\u05E9\u05D4", required: "\u05D7\u05D5\u05D1\u05D4", optional: "\u05E8\u05E9\u05D5\u05EA" },
-    table: { filter: "\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05D8\u05D1\u05DC\u05D4" }
+    table: { filter: "\u05E1\u05D9\u05E0\u05D5\u05DF \u05D4\u05D8\u05D1\u05DC\u05D4" },
+    steps: { prev: "\u2192 \u05D4\u05E7\u05D5\u05D3\u05DD", next: "\u05D4\u05D1\u05D0 \u2190", count: "\u05E9\u05DC\u05D1 {n} \u05DE\u05EA\u05D5\u05DA {m}: {item}", hint: "\u05DC\u05D7\u05E6\u05D5 \u05E2\u05DC \u05E4\u05E8\u05D9\u05D8 \u05D0\u05D5 \u05E2\u05DC \u05DE\u05E1\u05E4\u05E8 \u05E9\u05D5\u05E8\u05D4; \u2190 \u2192 \u05DC\u05DE\u05E2\u05D1\u05E8, Esc \u05DC\u05D1\u05D9\u05D8\u05D5\u05DC", hintExplain: "\u05DC\u05D7\u05E6\u05D5 \u05E2\u05DC \u05E4\u05E8\u05D9\u05D8 \u05D0\u05D5 \u05E2\u05DC \u05E9\u05DC\u05D1; \u2190 \u2192 \u05DC\u05DE\u05E2\u05D1\u05E8, Esc \u05DC\u05D1\u05D9\u05D8\u05D5\u05DC", bar: "\u05D1\u05E7\u05E8\u05EA \u05E9\u05DC\u05D1\u05D9\u05DD", idle: "{m} \u05E9\u05DC\u05D1\u05D9\u05DD", node: "\u05E9\u05DC\u05D1 {n}: {item}", list: "\u05E9\u05DC\u05D1\u05D9\u05DD", line: "\u05E9\u05D5\u05E8\u05D4 {n}", lines: "\u05E9\u05D5\u05E8\u05D5\u05EA {from}-{to}" }
   },
   // Names for the frontmatter keys an agent writes most (`author: …`), shown under the title. Other keys show as written.
   metaKeys: {
@@ -2021,6 +2186,7 @@ var tr_default = {
     scale: { down: "Daha k\xFC\xE7\xFCk yaz\u0131", up: "Daha b\xFCy\xFCk yaz\u0131" },
     copy: "Kayna\u011F\u0131 kopyala",
     done: "Kopyaland\u0131 \u2713",
+    failed: "Kopyalanamad\u0131",
     copyCode: "Kopyala",
     update: { button: "Yeni s\xFCr\xFCm {version}", current: "Sizdeki s\xFCr\xFCm {current}. Yeni s\xFCr\xFCm bu sayfa olu\u015Fturulurken bulundu.", whatsNew: "Yenilikler:", run: "Terminalde \xE7al\u0131\u015Ft\u0131r\u0131n:", agent: "Ya da Agent\u2019a s\xF6yleyin:", agentText: "answer-me-with-html\u2019i g\xFCncelle", notes: "Yenilikleri g\xF6r" },
     live: { updated: "Sayfa g\xFCncellendi", reload: "Yeniden y\xFCkle" },
@@ -2063,11 +2229,16 @@ var tr_default = {
     chart: { name: "Grafik", data: "Veri", value: "De\u011Fer", share: "Pay" },
     api: { path: "Yol parametreleri", query: "Sorgu parametreleri", headers: "Ba\u015Fl\u0131klar", request: "\u0130stek", response: "Yan\u0131t", field: "Alan", type: "T\xFCr", description: "A\xE7\u0131klama", requirement: "Gereklilik", required: "Zorunlu", optional: "\u0130ste\u011Fe ba\u011Fl\u0131" },
     table: { filter: "Tabloyu filtrele" },
-    image: {
-      button: "G\xF6rsel olarak kopyala",
-      working: "G\xF6rsel olu\u015Fturuluyor\u2026",
-      done: "Kopyaland\u0131 \u2713",
-      failed: "Kopyalanamad\u0131",
+    steps: { prev: "\u2190 \xD6nceki", next: "Sonraki \u2192", count: "Ad\u0131m {n} / {m}: {item}", hint: "Bir \xF6\u011Feye veya sat\u0131r numaras\u0131na t\u0131klay\u0131n; \u2190 \u2192 ile gezin, Esc ile temizleyin", hintExplain: "Bir \xF6\u011Feye veya ad\u0131ma t\u0131klay\u0131n; \u2190 \u2192 ile gezin, Esc ile temizleyin", bar: "Ad\u0131m denetimleri", idle: "{m} ad\u0131m", node: "Ad\u0131m {n}: {item}", list: "Ad\u0131mlar", line: "Sat\u0131r {n}", lines: "Sat\u0131r {from}-{to}" },
+    export: {
+      button: "D\u0131\u015Fa aktar",
+      copy: "G\xF6rsel olarak kopyala",
+      download: "PNG indir",
+      pdf: "PDF olarak kaydet",
+      working: "Haz\u0131rlan\u0131yor\u2026",
+      copied: "Kopyaland\u0131 \u2713",
+      saved: "Kaydedildi \u2713",
+      failed: "D\u0131\u015Fa aktar\u0131lamad\u0131",
       unavailableBrowser: "Bu taray\u0131c\u0131 sayfay\u0131 g\xF6rsel olarak d\u0131\u015Fa aktaramaz.",
       unavailableClipboard: "Bu taray\u0131c\u0131 g\xF6rseli panoya yazamaz.",
       unavailablePolicy: "Bu \xF6nizleme kopyalamaya izin vermiyor.",
@@ -4775,8 +4946,10 @@ function tableOptions(tokens) {
   }
   return tokens;
 }
-marked.use({ hooks: { processAllTokens: (tokens) => filterBlocks(tableOptions(tokens), { lex: (source) => tableOptions(marked.lexer(source)), note }) } });
-inline.use({ hooks: { processAllTokens: (tokens) => filterInline(tokens, note) } });
+var blockPass = (tokens) => filterBlocks(tableOptions(tokens), { lex: (source) => tableOptions(marked.lexer(source)), note });
+var inlinePass = (tokens) => filterInline(tokens, note);
+marked.use({ hooks: { processAllTokens: blockPass } });
+inline.use({ hooks: { processAllTokens: inlinePass } });
 marked.use({ extensions: [{
   name: "table",
   renderer(token) {
@@ -4828,6 +5001,42 @@ function md(text2, { ui, interactive = true } = {}) {
     tableUi = outerUi;
     tableInteractive = outerInteractive;
   }
+}
+function codeSpans(text2, { inline: inlineField = false } = {}) {
+  const source = wrapSpacedImages(String(text2 ?? ""));
+  const spans = [];
+  const lineAt = (index) => source.slice(0, index).split("\n").length - 1;
+  const find = (raw, from, to) => {
+    const places = (raw.includes("|") ? [raw, raw.replaceAll("|", "\\|")] : [raw]).map((written) => ({ at: source.indexOf(written, from), length: written.length })).filter(({ at: at3, length }) => at3 >= 0 && at3 + length <= to);
+    return places.sort((a, b) => a.at - b.at)[0] ?? null;
+  };
+  const walk2 = (tokens, from, to) => {
+    let cursor = from;
+    for (const token of Array.isArray(tokens) ? tokens : []) {
+      const found = token.raw ? find(token.raw, cursor, to) : null;
+      const start = found ? found.at : cursor;
+      const end = found ? found.at + found.length : to;
+      let inner = start;
+      if (token.type === "codespan") spans.push({ text: token.text, line: lineAt(start) });
+      else if (token.type !== "image") {
+        inner = walk2(token.tokens, inner, end);
+        inner = walk2(token.items, inner, end);
+        for (const row of [token.header, ...token.rows ?? []]) {
+          for (const cell of Array.isArray(row) ? row : []) inner = walk2(cell.tokens, inner, end);
+        }
+      }
+      cursor = found ? end : Math.max(cursor, inner);
+    }
+    return cursor;
+  };
+  const outer = sink;
+  sink = null;
+  try {
+    walk2(inlineField ? inlinePass(O.lexInline(source, inline.defaults)) : blockPass(marked.lexer(source)), 0, source.length);
+  } finally {
+    sink = outer;
+  }
+  return spans;
 }
 function mdInline(text2) {
   return inline.parseInline(wrapSpacedImages(String(text2 ?? "")));
@@ -5037,9 +5246,9 @@ function innerMarkMessage(component, names2, mark, text2, escape = "", link = na
   const head = `${component}: "${first}" has a change marker inside the line, so "${inner[0].m.mark} " would become part of the name and draw a second box.`;
   if (marks.size > 1) return `${head} A marker starts the line and marks the whole line; write one line per marker`;
   if ([...marks][0] === "~" && link) return `${head} ~ marks a node, not a link: write it on a line of its own: "~ ${inner[0].m.text}"`;
-  const quote = (name2) => name2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const quote2 = (name2) => name2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let fixed2 = text2;
-  for (const { name: name2, m } of inner) fixed2 = fixed2.replace(new RegExp(`(?<!\\[)${quote(name2)}(?!\\])`), m.text);
+  for (const { name: name2, m } of inner) fixed2 = fixed2.replace(new RegExp(`(?<!\\[)${quote2(name2)}(?!\\])`), m.text);
   const plain = !/^[*[({]/.test(inner[0].m.text);
   return `${head} A marker starts the line and marks the whole line. Write: "${[...marks][0]} ${fixed2}".${escape && plain ? ` ${escape.replace("NAME", first)}` : ""}`;
 }
@@ -5059,180 +5268,6 @@ function withDelta(html, states, { ui, video = false } = {}) {
   const open = html.indexOf(">");
   const close = html.lastIndexOf("</");
   return `${html.slice(0, open - 1)} am-view-changes"${html.slice(open, close)}<div class="am-delta-bar">${counts}${switcher}</div>${html.slice(close)}`;
-}
-
-// src/components/tree.js
-var tree_default = {
-  name: "tree",
-  summary: "Hierarchy tree (org chart / indented list)",
-  syntax: `\`\`\`tree [list]
-Root | subtitle
-  Child
-    Grandchild | one-line note
-  *Highlighted child
-\`\`\`
-- Indentation (spaces or tabs) sets the level; "label | note" adds a gray note.
-- One root with 2 to 4 children \u2192 org chart; more children or the list argument \u2192 indented list; several roots \u2192 side by side.
-- Labels support inline Markdown, such as \`Section 1\` Words.
-- Change markers show what a plan adds, removes and changes. A line can start with + (added), - (removed) or ~ (changed), followed by a space, after the indentation:
-\`\`\`tree list
-src/
-  components/
-    + delta.js | parses change markers
-    ~ flow.js
-    ~ tree.js
-  - legacy/
-    old-flow.js
-\`\`\`
-  - Indentation still sets the level. The children of a + or - node inherit it; a child that carries a different marker is an error. ~ marks one node and is not inherited.
-  - The Changes view draws added in the theme's ok color, removed faded with a struck-through label, changed with a warn outline, and each marked node with a +, \u2212 or ~ badge. A count row and a Before / Changes / After switch sit under the tree: Before and After show the tree as it was and as it will be, plain and without the items that are not in that view.
-  - A line that starts with a marker and a space is always read as a marker. To keep a label that starts with "- ", write \\- item.`,
-  example: "```tree\nASD-STE100 | Simplified Technical English\n  Part 1: Writing rules\n    `Section 1` Words\n  Part 2: Dictionary\n    Approved words | one word, one meaning\n```",
-  render(text2, { args, ui, video }) {
-    const roots = buildTree(text2);
-    if (!roots.length) throw new ComponentError("tree needs at least one node", 1);
-    return withDelta(treeHtml(roots, /\blist\b/.test(args), ui), statesOf(roots), { ui, video });
-  }
-};
-function treeHtml(roots, listMode, ui) {
-  if (roots.length === 1) {
-    const [root] = roots;
-    const n = root.children.length;
-    if (!listMode && n >= 2 && n <= 4) return orgHtml(root, ui);
-    return `<div class="am-tree">${rootBox(root, ui, true)}${listHtml(root.children, ui)}</div>`;
-  }
-  if (!listMode && roots.length <= 4) {
-    return `<div class="am-tree"><div class="am-tree-cols am-tree-cols--free" style="--n: ${roots.length}">${colsHtml(roots, ui)}</div></div>`;
-  }
-  return `<div class="am-tree">${listHtml(roots, ui)}</div>`;
-}
-var statesOf = (nodes) => nodes.flatMap((n) => [n.state, ...statesOf(n.children)]);
-function buildTree(text2) {
-  const roots = [];
-  const stack = [];
-  let step = 0;
-  String(text2).split("\n").forEach((raw, i) => {
-    if (!raw.trim()) return;
-    const indent = raw.replace(/\t/g, "  ").match(/^ */)[0].length;
-    const node = { ...parseLabel(raw.trim()), indent, step: step++, line: i + 1, children: [] };
-    while (stack.length && stack.at(-1).indent >= indent) stack.pop();
-    (stack.length ? stack.at(-1).children : roots).push(node);
-    stack.push(node);
-  });
-  return roots.map((root) => settle(root, null));
-}
-function settle(node, inherited) {
-  const own = markState(node.mark);
-  if (inherited && own && own !== inherited) {
-    throw new ComponentError(`tree: "${node.mark}" under a ${inherited} node contradicts it. The children of a ${inherited} node are ${inherited} too; remove the marker or move the node`, node.line);
-  }
-  const state = inherited ?? own;
-  const below = state === "added" || state === "removed" ? state : null;
-  return { ...node, state, children: node.children.map((child) => settle(child, below)) };
-}
-function parseLabel(t) {
-  const escaped = /^\\[+\-~] /.test(t);
-  const { mark, text: text2 } = escaped ? { mark: null, text: t.slice(1) } : splitMarker(t);
-  const hi = text2.startsWith("*");
-  const [label, sub = ""] = fields(hi ? text2.slice(1) : text2);
-  return { label, sub, hi, mark };
-}
-var labelHtml = (label) => mdInline(label).replace(/^<code>([^<]*)<\/code>(?=\s*\S)/, '<span class="am-tree-tag">$1</span>');
-var vattrs = (n) => ` data-key="${esc(n.label)}" data-step="${n.step}"${deltaAttr(n.state)}`;
-var HIDDEN_IN = { before: "added", after: "removed" };
-function lineAttrs(siblings, i, cols) {
-  const n = siblings.length;
-  return Object.entries(HIDDEN_IN).map(([view, hidden]) => {
-    const shown2 = siblings.map((x2) => x2.state !== hidden);
-    const first = shown2.indexOf(true);
-    const last = shown2.lastIndexOf(true);
-    const natural = cols ? n === 1 ? "none" : i === 0 ? "start" : i === n - 1 ? "end" : "full" : i < n - 1 ? "full" : "short";
-    const kind2 = cols ? first === last || i < first || i > last ? "none" : i === first ? "start" : i === last ? "end" : "full" : i < last ? "full" : i === last ? "short" : "none";
-    return kind2 === natural ? "" : ` data-line-${view}="${kind2}"`;
-  }).join("");
-}
-var dropAttrs = (children) => Object.entries(HIDDEN_IN).map(([view, hidden]) => children.every((c) => c.state === hidden) ? ` data-line-${view}="none"` : "").join("");
-var boxInner = (n, ui) => `${deltaBadge(n.state, ui)}${labelHtml(n.label)}${n.sub ? `<small>${mdInline(n.sub)}</small>` : ""}`;
-function rootBox(root, ui, solo = false) {
-  const drop = solo ? "" : dropAttrs(root.children);
-  return `<div class="am-tree-root${solo ? " am-tree-root--solo" : ""}"${deltaAttr(root.state)}${drop}><div class="am-tree-box am-tree-box--root"${vattrs(root)}>${boxInner(root, ui)}</div></div>`;
-}
-function colHtml(node, ui, siblings, i) {
-  const children = node.children.length ? listHtml(node.children, ui) : "";
-  return `<div class="am-tree-col"${deltaAttr(node.state)}${lineAttrs(siblings, i, true)}><div class="am-tree-box${node.hi ? " am-tree-box--hi" : ""}"${vattrs(node)}>${boxInner(node, ui)}</div>${children}</div>`;
-}
-var colsHtml = (nodes, ui) => nodes.map((n, i) => colHtml(n, ui, nodes, i)).join("");
-function orgHtml(root, ui) {
-  return `<div class="am-tree">${rootBox(root, ui)}<div class="am-tree-cols" style="--n: ${root.children.length}">${colsHtml(root.children, ui)}</div></div>`;
-}
-function listHtml(nodes, ui) {
-  return `<ul class="am-tree-list">${nodes.map((n, i) => liHtml(n, ui, nodes, i)).join("")}</ul>`;
-}
-function liHtml(n, ui, siblings, i) {
-  const sub = n.sub ? `<span class="am-tree-sub">${mdInline(n.sub)}</span>` : "";
-  const kids = n.children.length ? `<ul>${n.children.map((c, k) => liHtml(c, ui, n.children, k)).join("")}</ul>` : "";
-  return `<li${n.hi ? ' class="am-tree-hi"' : ""}${vattrs(n)}${lineAttrs(siblings, i, false)}><span class="am-tree-label">${deltaBadge(n.state, ui)}${labelHtml(n.label)}</span>${sub}${kids}</li>`;
-}
-
-// src/components/limits.js
-var NICE_MAX = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
-var NICE_STEP = [1, 2, 2.5, 5, 10];
-function niceScale(peak) {
-  if (!Number.isFinite(peak) || peak <= 0) return { max: 1, step: 1 };
-  const target = peak * 1.4;
-  const pow = 10 ** Math.floor(Math.log10(target));
-  const integral = Number.isInteger(peak);
-  const nice = NICE_MAX.map((m) => m * pow).find((m) => m >= target - 1e-9) ?? 10 * pow;
-  const max = integral ? Math.ceil(nice) : nice;
-  const stepPow = 10 ** Math.floor(Math.log10(max));
-  const step = [...NICE_STEP.map((s) => s * stepPow / 10), ...NICE_STEP.map((s) => s * stepPow)].find((s) => max / s <= 7 && Number.isInteger(round(max / s)) && (integral ? s >= 1 : true)) ?? max;
-  return { max: round(max), step: round(step) };
-}
-var round = (n) => Math.round(n * 1e3) / 1e3;
-var pct = (v, max) => `${Math.round(v / max * 1e4) / 100}%`;
-var NUM = /^(?:max\s+)?(-?\d+(?:\.\d+)?)$/i;
-var limits_default = {
-  name: "limits",
-  summary: "Value vs limit bars",
-  syntax: `\`\`\`limits
-label | value / limit | unit (optional) | note (optional)
-label | limit | unit         \u2190 limit only: the bar fills to the limit
-\`\`\`
-- A row turns red when the value is over the limit. The limit may be written as "max 20".`,
-  example: "```limits\nProcedural sentence | 13 / 20 | words\nDescriptive sentence | max 25 | words\nNoun cluster | 4 / 3 | words | over\n```",
-  render(text2, { dir = "ltr", ui } = {}) {
-    const rows = contentLines(text2).map(({ text: t, line }) => parseRow(t, line));
-    if (!rows.length) throw new ComponentError("limits needs at least one line", 1);
-    const words3 = { ...EN_WORDS, ...ui?.limits };
-    return `<div class="am-limits">${rows.map((row) => rowHtml(row, dir === "rtl" ? "right" : "left", words3)).join("")}</div>`;
-  }
-};
-function parseRow(t, line) {
-  const [label, spec = "", unit = "", note2 = ""] = fields(t);
-  const [a, b] = spec.split("/").map((s) => s.trim());
-  const nums = (b === void 0 ? [a] : [a, b]).map((s) => s?.match(NUM)?.[1]);
-  if (!spec || nums.some((n) => n === void 0)) {
-    throw new ComponentError(`limits line must be label | value / limit | unit: "${t}"`, line);
-  }
-  const [value, limit] = b === void 0 ? [null, Number(nums[0])] : nums.map(Number);
-  return { label, value, limit, unit, note: note2 };
-}
-var EN_WORDS = { value: "{value} / max {limit}", limit: "max {limit}" };
-var fill = (template, value, limit) => template.replace("{value}", value).replace("{limit}", limit);
-function rowHtml({ label, value, limit, unit, note: note2 }, side = "left", words3 = EN_WORDS) {
-  const { max, step } = niceScale(Math.max(limit, value ?? 0));
-  const shown2 = value ?? limit;
-  const over2 = value !== null && value > limit;
-  const valText = `${value !== null ? fill(words3.value, value, limit) : fill(words3.limit, value, limit)}${unit ? ` ${unit}` : ""}`;
-  const ticks = [];
-  if (step > 0 && max > 0) {
-    for (let v = 0; v <= max + 1e-9; v += step) ticks.push(`<span style="${side}: ${pct(round(v), max)}">${round(v)}</span>`);
-  }
-  return `<div class="am-lim${over2 ? " is-over" : ""}">
-<div class="am-lim-head"><span>${esc(label)}${note2 ? `<span class="am-lim-note">${esc(note2)}</span>` : ""}</span><span class="am-lim-val">${esc(valText)}</span></div>
-<div class="am-lim-track"><div class="am-lim-fill" style="width: ${pct(shown2, max)}"></div><div class="am-lim-mark" style="${side}: ${pct(limit, max)}"></div></div>
-<div class="am-lim-ticks" aria-hidden="true">${ticks.join("")}</div>
-</div>`;
 }
 
 // src/runtime/rtl-letter.js
@@ -5441,6 +5476,282 @@ function mirrorLayout(g) {
     edge.points = edge.points.map((p) => ({ ...p, x: flip(p.x) }));
     if (edge.x !== void 0) edge.x = flip(edge.x);
   }
+}
+
+// src/steps.js
+var FORM = "<item> <line or range>: <note>";
+var EXPLAIN_FORM = "<item>: <explanation>";
+var IMAGE = /!\[[^\]]*\]\(|<img\b/i;
+var noImage = (text2, line) => {
+  if (IMAGE.test(text2.replace(/`[^`]*`/g, ""))) throw new ComponentError("steps: a step holds text, not an image; show the picture in its own block", line);
+};
+function parseStep(text2, line) {
+  noImage(text2, line);
+  const colon = text2.indexOf(":");
+  if (colon < 0) throw new ComponentError(`steps: write each step as ${FORM}, for example "Start 10-12: Begin here."`, line);
+  const head = text2.slice(0, colon).trim();
+  const at3 = head.match(/(?:^|\s)(\d+)(?:\s*-\s*(\d+))?$/);
+  if (!at3) throw new ComponentError(`steps: "${head}" has no line number before the colon; write ${FORM}`, line);
+  const item = head.slice(0, at3.index).trim();
+  if (!item) throw new ComponentError(`steps: write the item before its lines; ${FORM}`, line);
+  if (item.endsWith("-")) throw new ComponentError(`steps: an item cannot end with "-", which reads as a range; write the item, then the lines as N or N-M`, line);
+  const from = Number(at3[1]);
+  const to = at3[2] === void 0 ? from : Number(at3[2]);
+  if (from < 1) throw new ComponentError(`steps: line numbers start at 1; write 1 or more, not ${from}`, line);
+  if (to < from) throw new ComponentError(`steps: the range ${from}-${to} ends before it starts; the first line must not be after the last`, line);
+  return { item, head, from, to, note: text2.slice(colon + 1).trim(), line };
+}
+function parseExplained(text2, line) {
+  noImage(text2, line);
+  const colon = text2.indexOf(":");
+  if (colon < 0) throw new ComponentError(`steps: write each step as ${EXPLAIN_FORM}, for example "Start: Begin here."`, line);
+  const item = text2.slice(0, colon).trim();
+  if (!item) throw new ComponentError(`steps: write the item before its explanation; ${EXPLAIN_FORM}`, line);
+  return { item, head: item, note: text2.slice(colon + 1).trim(), line };
+}
+function parseSteps(text2, mode = "code") {
+  const parse = mode === "explain" ? parseExplained : parseStep;
+  const steps2 = contentLines(text2).map((l3) => parse(l3.text, l3.line));
+  if (!steps2.length) throw new ComponentError(`steps: write at least one step, as ${mode === "explain" ? EXPLAIN_FORM : FORM}`, 1);
+  return steps2;
+}
+var normalize = (text2) => String(text2).replace(/`/g, "").replace(/\s+/g, " ").trim();
+var labels = (ui) => ui?.steps ?? en_default.ui.steps;
+var fill = (text2, values) => text2.replace(/\{(\w+)\}/g, (m, key) => key in values ? String(values[key]) : m);
+function makeLink(steps2, ui) {
+  const t = labels(ui);
+  const keys = steps2.map((s) => normalize(s.item));
+  const matches = steps2.map(() => 0);
+  const seen = [];
+  const index = (label) => label == null ? -1 : keys.indexOf(normalize(label));
+  return {
+    matches,
+    seen,
+    node(label) {
+      seen.push(label);
+      const i = index(label);
+      if (i < 0) return null;
+      matches[i] += 1;
+      const name2 = fill(t.node, { n: i + 1, item: steps2[i].item });
+      return { n: i + 1, attrs: ` data-link="${i}" tabindex="0" role="button" aria-label="${esc(name2)}"` };
+    },
+    ends(from, to) {
+      const [a, b] = [index(from), index(to)];
+      return a < 0 && b < 0 ? "" : ` data-ends="${a < 0 ? "-" : a} ${b < 0 ? "-" : b}"`;
+    }
+  };
+}
+var groupSvg = (html) => html.replace(/(<svg [^>]*?) role="img"/, '$1 role="group"');
+var stepBadgeSvg = (n, x2, y2) => `<g class="am-step-badge" transform="translate(${f(x2)},${f(y2)})"><circle r="8"/><text text-anchor="middle" dominant-baseline="central">${n}</text></g>`;
+var stepBadgeHtml = (n) => `<span class="am-step-badge" aria-hidden="true">${n}</span>`;
+function markCodeLines(html, steps2) {
+  return html.replace(/<span class="am-ln([^"]*)" data-n="(\d+)">/g, (whole, cls, n) => {
+    const line = Number(n);
+    const i = steps2.findLastIndex((s) => line >= s.from && line <= s.to);
+    return i < 0 ? whole : `<span class="am-ln${cls}" data-n="${n}" data-link="${i}"${line === steps2[i].from ? ` data-sn="${i + 1}"` : ""}>`;
+  });
+}
+var linesText = (s, t) => s.from === s.to ? fill(t.line, { n: s.from }) : fill(t.lines, { from: s.from, to: s.to });
+function stepsList(steps2, ui) {
+  const t = labels(ui);
+  const items = steps2.map((s, i) => `<li data-link="${i}"><span class="am-steps-item">${mdInline(s.item)}</span> <span class="am-steps-lines">${esc(linesText(s, t))}</span>${s.note ? ` <span class="am-steps-text">${mdInline(s.note)}</span>` : ""}</li>`);
+  return `<ol class="am-steps-list" aria-label="${esc(t.list)}">${items.join("")}</ol>`;
+}
+function explainList(steps2, ui) {
+  const t = labels(ui);
+  const items = steps2.map((s, i) => `<li><div class="am-steps-entry" data-link="${i}"><strong class="am-steps-lead">${i + 1}. <span class="am-steps-item">${mdInline(s.item)}</span></strong>${s.note ? ` <span class="am-steps-text">${mdInline(s.note)}</span>` : ""}</div></li>`);
+  return `<ol class="am-steps-list am-steps-list--explain" aria-label="${esc(t.list)}">${items.join("")}</ol>`;
+}
+function stepsBlock(pair, steps2, ui, mode = "code") {
+  const t = labels(ui);
+  const m = steps2.length;
+  const explain = mode === "explain";
+  const hint = explain ? t.hintExplain ?? en_default.ui.steps.hintExplain : t.hint;
+  const after = explain ? "" : stepsList(steps2, ui);
+  return `<div class="am-steps"${explain ? ' data-mode="explain"' : ""} data-steps="${m}" data-count="${esc(t.count)}" data-idle="${esc(fill(t.idle, { m }))}" data-prev="${esc(t.prev)}" data-next="${esc(t.next)}" data-hint="${esc(hint)}" data-bar="${esc(t.bar)}"><div class="am-steps-pair">${pair}</div>${after}</div>`;
+}
+var linesName = (s) => s.from === s.to ? `line ${s.from}` : `lines ${s.from}-${s.to}`;
+
+// src/components/tree.js
+var tree_default = {
+  name: "tree",
+  summary: "Hierarchy tree (org chart / indented list)",
+  syntax: `\`\`\`tree [list]
+Root | subtitle
+  Child
+    Grandchild | one-line note
+  *Highlighted child
+\`\`\`
+- Indentation (spaces or tabs) sets the level; "label | note" adds a gray note.
+- One root with 2 to 4 children \u2192 org chart; more children or the list argument \u2192 indented list; several roots \u2192 side by side.
+- Labels support inline Markdown, such as \`Section 1\` Words.
+- Change markers show what a plan adds, removes and changes. A line can start with + (added), - (removed) or ~ (changed), followed by a space, after the indentation:
+\`\`\`tree list
+src/
+  components/
+    + delta.js | parses change markers
+    ~ flow.js
+    ~ tree.js
+  - legacy/
+    old-flow.js
+\`\`\`
+  - Indentation still sets the level. The children of a + or - node inherit it; a child that carries a different marker is an error. ~ marks one node and is not inherited.
+  - The Changes view draws added in the theme's ok color, removed faded with a struck-through label, changed with a warn outline, and each marked node with a +, \u2212 or ~ badge. A count row and a Before / Changes / After switch sit under the tree: Before and After show the tree as it was and as it will be, plain and without the items that are not in that view.
+  - A line that starts with a marker and a space is always read as a marker. To keep a label that starts with "- ", write \\- item.`,
+  example: "```tree\nASD-STE100 | Simplified Technical English\n  Part 1: Writing rules\n    `Section 1` Words\n  Part 2: Dictionary\n    Approved words | one word, one meaning\n```",
+  render(text2, { args, ui, video, link }) {
+    const roots = buildTree(text2);
+    if (!roots.length) throw new ComponentError("tree needs at least one node", 1);
+    return withDelta(treeHtml(roots, /\blist\b/.test(args), ui, link), statesOf(roots), { ui, video });
+  }
+};
+function treeHtml(roots, listMode, ui, link) {
+  if (roots.length === 1) {
+    const [root] = roots;
+    const n = root.children.length;
+    if (!listMode && n >= 2 && n <= 4) return orgHtml(root, ui, link);
+    return `<div class="am-tree">${rootBox(root, ui, link, true)}${listHtml(root.children, ui, link)}</div>`;
+  }
+  if (!listMode && roots.length <= 4) {
+    return `<div class="am-tree"><div class="am-tree-cols am-tree-cols--free" style="--n: ${roots.length}">${colsHtml(roots, ui, link)}</div></div>`;
+  }
+  return `<div class="am-tree">${listHtml(roots, ui, link)}</div>`;
+}
+var statesOf = (nodes) => nodes.flatMap((n) => [n.state, ...statesOf(n.children)]);
+function buildTree(text2) {
+  const roots = [];
+  const stack = [];
+  let step = 0;
+  String(text2).split("\n").forEach((raw, i) => {
+    if (!raw.trim()) return;
+    const indent = raw.replace(/\t/g, "  ").match(/^ */)[0].length;
+    const node = { ...parseLabel(raw.trim()), indent, step: step++, line: i + 1, children: [] };
+    while (stack.length && stack.at(-1).indent >= indent) stack.pop();
+    (stack.length ? stack.at(-1).children : roots).push(node);
+    stack.push(node);
+  });
+  return roots.map((root) => settle(root, null));
+}
+function settle(node, inherited) {
+  const own = markState(node.mark);
+  if (inherited && own && own !== inherited) {
+    throw new ComponentError(`tree: "${node.mark}" under a ${inherited} node contradicts it. The children of a ${inherited} node are ${inherited} too; remove the marker or move the node`, node.line);
+  }
+  const state = inherited ?? own;
+  const below = state === "added" || state === "removed" ? state : null;
+  return { ...node, state, children: node.children.map((child) => settle(child, below)) };
+}
+function parseLabel(t) {
+  const escaped = /^\\[+\-~] /.test(t);
+  const { mark, text: text2 } = escaped ? { mark: null, text: t.slice(1) } : splitMarker(t);
+  const hi = text2.startsWith("*");
+  const [label, sub = ""] = fields(hi ? text2.slice(1) : text2);
+  return { label, sub, hi, mark };
+}
+var softBreaks = (html) => html.replace(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)|([^<]+)/g, (_2, tag, text2) => tag ?? text2.replace(/\S{12,}/g, (word) => word.replace(/[.@/_:]+(?=[^.@/_:])/g, "$&<wbr>")));
+var labelHtml = (label) => softBreaks(mdInline(label).replace(/^<code>([^<]*)<\/code>(?=\s*\S)/, '<span class="am-tree-tag">$1</span>'));
+var vattrs = (n) => ` data-key="${esc(n.label)}" data-step="${n.step}"${deltaAttr(n.state)}`;
+var HIDDEN_IN = { before: "added", after: "removed" };
+function lineAttrs(siblings, i, cols) {
+  const n = siblings.length;
+  return Object.entries(HIDDEN_IN).map(([view, hidden]) => {
+    const shown2 = siblings.map((x2) => x2.state !== hidden);
+    const first = shown2.indexOf(true);
+    const last = shown2.lastIndexOf(true);
+    const natural = cols ? n === 1 ? "none" : i === 0 ? "start" : i === n - 1 ? "end" : "full" : i < n - 1 ? "full" : "short";
+    const kind2 = cols ? first === last || i < first || i > last ? "none" : i === first ? "start" : i === last ? "end" : "full" : i < last ? "full" : i === last ? "short" : "none";
+    return kind2 === natural ? "" : ` data-line-${view}="${kind2}"`;
+  }).join("");
+}
+var dropAttrs = (children) => Object.entries(HIDDEN_IN).map(([view, hidden]) => children.every((c) => c.state === hidden) ? ` data-line-${view}="none"` : "").join("");
+var stepOf = (n, link) => {
+  const step = link?.node(n.label);
+  return { attrs: step?.attrs ?? "", badge: step ? stepBadgeHtml(step.n) : "" };
+};
+var boxInner = (n, ui, badge = "") => `${badge}${deltaBadge(n.state, ui)}${labelHtml(n.label)}${n.sub ? `<small>${softBreaks(mdInline(n.sub))}</small>` : ""}`;
+function rootBox(root, ui, link, solo = false) {
+  const drop = solo ? "" : dropAttrs(root.children);
+  const step = stepOf(root, link);
+  return `<div class="am-tree-root${solo ? " am-tree-root--solo" : ""}"${deltaAttr(root.state)}${drop}><div class="am-tree-box am-tree-box--root"${vattrs(root)}${step.attrs}>${boxInner(root, ui, step.badge)}</div></div>`;
+}
+function colHtml(node, ui, link, siblings, i) {
+  const children = node.children.length ? listHtml(node.children, ui, link) : "";
+  const step = stepOf(node, link);
+  return `<div class="am-tree-col"${deltaAttr(node.state)}${lineAttrs(siblings, i, true)}><div class="am-tree-box${node.hi ? " am-tree-box--hi" : ""}"${vattrs(node)}${step.attrs}>${boxInner(node, ui, step.badge)}</div>${children}</div>`;
+}
+var colsHtml = (nodes, ui, link) => nodes.map((n, i) => colHtml(n, ui, link, nodes, i)).join("");
+function orgHtml(root, ui, link) {
+  return `<div class="am-tree">${rootBox(root, ui, link)}<div class="am-tree-cols" style="--n: ${root.children.length}">${colsHtml(root.children, ui, link)}</div></div>`;
+}
+function listHtml(nodes, ui, link) {
+  return `<ul class="am-tree-list">${nodes.map((n, i) => liHtml(n, ui, link, nodes, i)).join("")}</ul>`;
+}
+function liHtml(n, ui, link, siblings, i) {
+  const step = stepOf(n, link);
+  const sub = n.sub ? `<span class="am-tree-sub">${softBreaks(mdInline(n.sub))}</span>` : "";
+  const kids = n.children.length ? `<ul>${n.children.map((c, k) => liHtml(c, ui, link, n.children, k)).join("")}</ul>` : "";
+  return `<li${n.hi ? ' class="am-tree-hi"' : ""}${vattrs(n)}${lineAttrs(siblings, i, false)}><span class="am-tree-label"${step.attrs}>${step.badge}${deltaBadge(n.state, ui)}${labelHtml(n.label)}</span>${sub}${kids}</li>`;
+}
+
+// src/components/limits.js
+var NICE_MAX = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+var NICE_STEP = [1, 2, 2.5, 5, 10];
+function niceScale(peak) {
+  if (!Number.isFinite(peak) || peak <= 0) return { max: 1, step: 1 };
+  const target = peak * 1.4;
+  const pow = 10 ** Math.floor(Math.log10(target));
+  const integral = Number.isInteger(peak);
+  const nice = NICE_MAX.map((m) => m * pow).find((m) => m >= target - 1e-9) ?? 10 * pow;
+  const max = integral ? Math.ceil(nice) : nice;
+  const stepPow = 10 ** Math.floor(Math.log10(max));
+  const step = [...NICE_STEP.map((s) => s * stepPow / 10), ...NICE_STEP.map((s) => s * stepPow)].find((s) => max / s <= 7 && Number.isInteger(round(max / s)) && (integral ? s >= 1 : true)) ?? max;
+  return { max: round(max), step: round(step) };
+}
+var round = (n) => Math.round(n * 1e3) / 1e3;
+var pct = (v, max) => `${Math.round(v / max * 1e4) / 100}%`;
+var NUM = /^(?:max\s+)?(-?\d+(?:\.\d+)?)$/i;
+var limits_default = {
+  name: "limits",
+  summary: "Value vs limit bars",
+  syntax: `\`\`\`limits
+label | value / limit | unit (optional) | note (optional)
+label | limit | unit         \u2190 limit only: the bar fills to the limit
+\`\`\`
+- A row turns red when the value is over the limit. The limit may be written as "max 20".`,
+  example: "```limits\nProcedural sentence | 13 / 20 | words\nDescriptive sentence | max 25 | words\nNoun cluster | 4 / 3 | words | over\n```",
+  render(text2, { dir = "ltr", ui } = {}) {
+    const rows = contentLines(text2).map(({ text: t, line }) => parseRow(t, line));
+    if (!rows.length) throw new ComponentError("limits needs at least one line", 1);
+    const words3 = { ...EN_WORDS, ...ui?.limits };
+    return `<div class="am-limits">${rows.map((row) => rowHtml(row, dir === "rtl" ? "right" : "left", words3)).join("")}</div>`;
+  }
+};
+function parseRow(t, line) {
+  const [label, spec = "", unit = "", note2 = ""] = fields(t);
+  const [a, b] = spec.split("/").map((s) => s.trim());
+  const nums = (b === void 0 ? [a] : [a, b]).map((s) => s?.match(NUM)?.[1]);
+  if (!spec || nums.some((n) => n === void 0)) {
+    throw new ComponentError(`limits line must be label | value / limit | unit: "${t}"`, line);
+  }
+  const [value, limit] = b === void 0 ? [null, Number(nums[0])] : nums.map(Number);
+  return { label, value, limit, unit, note: note2 };
+}
+var EN_WORDS = { value: "{value} / max {limit}", limit: "max {limit}" };
+var fill2 = (template, value, limit) => template.replace("{value}", value).replace("{limit}", limit);
+function rowHtml({ label, value, limit, unit, note: note2 }, side = "left", words3 = EN_WORDS) {
+  const { max, step } = niceScale(Math.max(limit, value ?? 0));
+  const shown2 = value ?? limit;
+  const over2 = value !== null && value > limit;
+  const valText = `${value !== null ? fill2(words3.value, value, limit) : fill2(words3.limit, value, limit)}${unit ? ` ${unit}` : ""}`;
+  const ticks = [];
+  if (step > 0 && max > 0) {
+    for (let v = 0; v <= max + 1e-9; v += step) ticks.push(`<span style="${side}: ${pct(round(v), max)}">${round(v)}</span>`);
+  }
+  return `<div class="am-lim${over2 ? " is-over" : ""}">
+<div class="am-lim-head"><span>${esc(label)}${note2 ? `<span class="am-lim-note">${esc(note2)}</span>` : ""}</span><span class="am-lim-val">${esc(valText)}</span></div>
+<div class="am-lim-track"><div class="am-lim-fill" style="width: ${pct(shown2, max)}"></div><div class="am-lim-mark" style="${side}: ${pct(limit, max)}"></div></div>
+<div class="am-lim-ticks" aria-hidden="true">${ticks.join("")}</div>
+</div>`;
 }
 
 // src/components/sequence.js
@@ -7551,10 +7862,10 @@ var around = ({ x: x2, y: y2 }, { width, height }) => [x2 - width / 2, y2 - heig
 var inset = ([x0, y0, x1, y1], d) => [x0 + d, y0 + d, x1 - d, y1 - d];
 var runsThrough = (curve, box) => curve.slice(1).some((p, k) => segmentHits(curve[k], p, box));
 var name = (e) => `${e.from} -> ${e.to}`;
-function crossings({ g, key, sizes, labels }, { nodes, edges }) {
+function crossings({ g, key, sizes, labels: labels2 }, { nodes, edges }) {
   const drawn = edges.map((e, i) => g.edge({ v: key.get(e.from), w: key.get(e.to), name: `e${i}` }));
   const nodeBoxes = [...nodes.keys()].map((id) => [id, inset(around(g.node(key.get(id)), sizes.get(id)), NODE_INSET)]);
-  const labelBoxes = edges.map((e, i) => labels[i] ? inset(around(drawn[i], labels[i]), LABEL_INSET) : null);
+  const labelBoxes = edges.map((e, i) => labels2[i] ? inset(around(drawn[i], labels2[i]), LABEL_INSET) : null);
   return edges.flatMap((edge, i) => {
     const curve = curvePoints(drawn[i].points);
     const node = nodeBoxes.find(([id, box]) => id !== edge.from && id !== edge.to && runsThrough(curve, box));
@@ -7638,11 +7949,11 @@ Client -> Gateway
   - The Changes view draws added in the theme's ok color, removed faded with a struck-through label, changed with a warn outline, and each marked node with a +, \u2212 or ~ badge. A count row and a Before / Changes / After switch sit under the diagram: Before and After show the diagram as it was and as it will be, plain and without the items that are not in that view.
   - A line that starts with a marker and a space is always read as a marker. A marker inside the line, before a node ("A -> + B"), is an error: write it at the start, "+ A -> B". To keep a node name that starts with "- ", write it in brackets: [- Gateway].`,
   example: "```flow LR\n(User) -> Gateway: HTTPS\nGateway -> Auth & *Service\nService -> [(Database)]\ngroup Backend: Auth, Service\n```",
-  render(text2, { args, uid, ui, warn, video, dir: pageDir = "ltr" }) {
+  render(text2, { args, uid, ui, warn, video, link, dir: pageDir = "ltr" }) {
     const model = parseFlow(text2);
     model.warnings.forEach((w2) => warn?.(w2));
     const flowDir = (args.match(/\b(TB|LR|BT|RL)\b/i)?.[1] ?? "TB").toUpperCase();
-    const html = `<figure class="am-diagram am-flow">${layout2(model, DIRS.has(flowDir) ? flowDir : "TB", uid(), ui, pageDir, video ? void 0 : warn)}</figure>`;
+    const html = `<figure class="am-diagram am-flow">${layout2(model, DIRS.has(flowDir) ? flowDir : "TB", uid(), ui, pageDir, video ? void 0 : warn, link)}</figure>`;
     return withDelta(html, [...model.nodes.values(), ...model.edges, ...model.groups].map((x2) => x2.state ?? null), { ui, video });
   }
 };
@@ -7849,9 +8160,9 @@ function runLayout({ nodes, edges, groups }, rankdir, rtl, widths, reserve) {
       });
     });
   });
-  const labels = edges.map((e) => e.label ? edgeText(e.label) : null);
+  const labels2 = edges.map((e) => e.label ? edgeText(e.label) : null);
   edges.forEach((e, i) => {
-    const size = labels[i];
+    const size = labels2[i];
     const label = size ? { label: e.label, width: size.width + 2, height: size.height, labelpos: "c" } : {};
     g.setEdge(key.get(e.from), key.get(e.to), label, `e${i}`);
   });
@@ -7864,7 +8175,7 @@ function runLayout({ nodes, edges, groups }, rankdir, rtl, widths, reserve) {
     }
   }
   fitEdges(g);
-  return { g, key, sizes, labels };
+  return { g, key, sizes, labels: labels2 };
 }
 function fitEdges(g) {
   const graph = g.graph();
@@ -7965,7 +8276,7 @@ function reservedLayout(model, rankdir, rtl, widths) {
   }
   return { run: run2, spots, reserve };
 }
-function layout2(model, rankdir, id, ui, pageDir = "ltr", warn) {
+function layout2(model, rankdir, id, ui, pageDir = "ltr", warn, link) {
   const { nodes, edges, groups } = model;
   const rtl = pageDir === "rtl";
   const widths = groups.map((grp) => labelWidth(grp.name, pageDir));
@@ -7981,13 +8292,14 @@ function layout2(model, rankdir, id, ui, pageDir = "ltr", warn) {
     const [labelX, labelY] = spots[i] ?? [rtl ? x2 + c.width - 8 : x2 + 8, y2 + 14];
     return `<rect class="am-cluster"${mark} x="${f(x2)}" y="${f(y2)}" width="${f(c.width)}" height="${f(c.height)}" rx="4"/><text class="am-cluster-label"${mark} x="${f(labelX)}" y="${f(labelY)}">${esc(svgLine(grp.name, pageDir))}</text>${badgeSvg(grp.state, badgeX, y2)}`;
   });
-  const stepOf = new Map([.../* @__PURE__ */ new Set([...[...nodes.values()].map((n) => n.line), ...edges.map((e) => e.line)])].sort((a, b) => a - b).map((l3, k) => [l3, k]));
+  const stepOf2 = new Map([.../* @__PURE__ */ new Set([...[...nodes.values()].map((n) => n.line), ...edges.map((e) => e.line)])].sort((a, b) => a - b).map((l3, k) => [l3, k]));
   const edgeSvg = edges.map((e, i) => {
     const data = g.edge({ v: key.get(e.from), w: key.get(e.to), name: `e${i}` });
     const pts = clipEnds(data.points, g.node(key.get(e.from)), nodes.get(e.from).shape, g.node(key.get(e.to)), nodes.get(e.to).shape);
     const head = e.state ? `${id}-arrow-${e.state}` : `${id}-arrow`;
     const path = `<path class="am-edge${e.dashed ? " am-edge--dashed" : ""}" d="${smoothPath(pts)}" marker-end="url(#${head})"/>`;
-    const open = `<g data-step="${stepOf.get(e.line)}"${deltaAttr(e.state)}>`;
+    const ends = link ? link.ends(nodes.get(e.from).label, nodes.get(e.to).label) : "";
+    const open = `<g data-step="${stepOf2.get(e.line)}"${deltaAttr(e.state)}${ends}>`;
     if (!e.label) return `${open}${path}</g>`;
     const { lines, width: w2, height: h2 } = edgeText(e.label);
     return `${open}${path}<g class="am-edge-label"><rect x="${f(data.x - w2 / 2)}" y="${f(data.y - h2 / 2)}" width="${f(w2)}" height="${f(h2)}" rx="3"/>${textLines(lines, data.x, data.y, LH2, "", pageDir)}</g></g>`;
@@ -7996,7 +8308,9 @@ function layout2(model, rankdir, id, ui, pageDir = "ltr", warn) {
     const { x: x2, y: y2 } = g.node(key.get(n.id));
     const { width: w2, height: h2, lines } = sizes.get(n.id);
     const badge = badgeSvg(n.state, ...badgePoint(n.shape, x2, y2, w2, h2, rtl));
-    return `<g class="am-node am-node--${n.shape}${n.hi ? " am-node--hi" : ""}" data-key="${esc(n.label)}" data-step="${stepOf.get(n.line)}"${deltaAttr(n.state)}>${shapeSvg(n.shape, x2, y2, w2, h2)}${textLines(lines, x2, y2 + (n.shape === "db" ? 4 : 0), LH2, ' class="am-node-text"', pageDir)}${badge}</g>`;
+    const step = link?.node(n.label);
+    const number = step ? stepBadgeSvg(step.n, ...badgePoint(n.shape, x2, y2, w2, h2, !rtl)) : "";
+    return `<g class="am-node am-node--${n.shape}${n.hi ? " am-node--hi" : ""}" data-key="${esc(n.label)}" data-step="${stepOf2.get(n.line)}"${deltaAttr(n.state)}${step?.attrs ?? ""}>${shapeSvg(n.shape, x2, y2, w2, h2)}${textLines(lines, x2, y2 + (n.shape === "db" ? 4 : 0), LH2, ' class="am-node-text"', pageDir)}${badge}${number}</g>`;
   });
   const { width, height } = g.graph();
   const label = diagramLabel(ui, "flow", [...nodes.keys()].slice(0, 8));
@@ -8127,10 +8441,10 @@ Polling -> Open: reply
   - The Changes view draws added in the theme's ok color, removed faded with a struck-through label, changed with a warn outline, and each marked state with a +, \u2212 or ~ badge. A count row and a Before / Changes / After switch sit under the diagram.
   - A line that starts with a marker and a space is always read as a marker. A marker inside the line, before a state ("A -> + B"), is an error: write it at the start, "+ A -> B".`,
   example: "```state LR\n[*] -> Idle\nIdle -> Connecting: connect()\nConnecting -> Open: SYN-ACK\nConnecting -> Closed: RST\nOpen -> Open: retransmit\nOpen -> Closed: close()\nClosed -> [*]\n```",
-  render(text2, { args, uid, ui, video, dir: pageDir = "ltr" }) {
+  render(text2, { args, uid, ui, video, link, dir: pageDir = "ltr" }) {
     const model = parseState(text2);
     const dir = (args.match(/\b(TB|LR|BT|RL)\b/i)?.[1] ?? "TB").toUpperCase();
-    const html = `<figure class="am-diagram am-state">${layout3(model, DIRS2.has(dir) ? dir : "TB", uid(), ui, pageDir, video)}</figure>`;
+    const html = `<figure class="am-diagram am-state">${layout3(model, DIRS2.has(dir) ? dir : "TB", uid(), ui, pageDir, video, link)}</figure>`;
     return withDelta(html, [...model.nodes.values(), ...model.edges].map((x2) => x2.state ?? null), { ui, video });
   }
 };
@@ -8212,7 +8526,7 @@ function checkTransitions(edges, nodes) {
     }
   }
 }
-function layout3(model, rankdir, id, ui, pageDir = "ltr", video = false) {
+function layout3(model, rankdir, id, ui, pageDir = "ltr", video = false, link) {
   const { nodes, edges, lines } = model;
   const rtl = pageDir === "rtl";
   const side = rtl ? -1 : 1;
@@ -8252,16 +8566,21 @@ function layout3(model, rankdir, id, ui, pageDir = "ltr", video = false) {
     const extra = room.get(nodeId) ?? {};
     return { x: x2 - side * (extra.x ?? 0) / 2, y: y2 - (extra.y ?? 0) / 2 };
   };
-  const stepOf = new Map(lines.map((line, i) => [line, i]));
+  const stepOf2 = new Map(lines.map((line, i) => [line, i]));
   const drawn = straight.map((e, i) => {
     const data = g.edge({ v: key.get(e.from), w: key.get(e.to), name: `e${i}` });
     return { e, data, points: clipEnds2(data.points, e, centre, boxes, room, nodes) };
   });
+  const endsOf = (e) => {
+    if (!link) return "";
+    const label2 = (id2) => nodes.get(id2).kind === "state" ? nodes.get(id2).label : null;
+    return link.ends(label2(e.from), label2(e.to));
+  };
   const edgeSvg = drawn.map(({ e, data, points }) => {
     const head = e.state ? `${id}-arrow-${e.state}` : `${id}-arrow`;
     const path = `<path class="am-edge" d="${smoothPath(points)}" marker-end="url(#${head})"/>`;
     const text2 = e.label ? edgeLabelSvg(e.label, data.x, data.y, pageDir) : "";
-    return `<g data-step="${stepOf.get(e.line)}"${deltaAttr(e.state)}>${path}${text2}</g>`;
+    return `<g data-step="${stepOf2.get(e.line)}"${deltaAttr(e.state)}${endsOf(e)}>${path}${text2}</g>`;
   });
   const seen = /* @__PURE__ */ new Map();
   const loopSpecs = loops.map((e) => {
@@ -8280,18 +8599,20 @@ function layout3(model, rankdir, id, ui, pageDir = "ltr", video = false) {
     const head = e.state ? `${id}-arrow-${e.state}` : `${id}-arrow`;
     const path = `<path class="am-edge" d="${loopPath(spec)}" marker-end="url(#${head})"/>`;
     const text2 = e.label && spec.label ? edgeLabelSvg(e.label, spec.label.x, spec.label.y, pageDir) : "";
-    return `<g data-step="${stepOf.get(e.line)}"${deltaAttr(e.state)}>${path}${text2}</g>`;
+    return `<g data-step="${stepOf2.get(e.line)}"${deltaAttr(e.state)}${endsOf(e)}>${path}${text2}</g>`;
   });
   const nodeSvg = [...nodes.values()].map((n) => {
     const { x: x2, y: y2 } = centre(n.id);
     const box = boxes.get(n.id);
-    const badgeStep = n.state === "changed" ? stepOf.get(n.tildeLine ?? n.line) : void 0;
+    const badgeStep = n.state === "changed" ? stepOf2.get(n.tildeLine ?? n.line) : void 0;
     const badge = badgeSvg(n.state, rtl ? x2 - box.width / 2 : x2 + box.width / 2, y2 - box.height / 2, badgeStep);
     const keyAttr = n.kind === "state" ? ` data-key="${esc(n.label)}"` : "";
-    const open = `<g class="am-node am-node--state${n.kind === "state" ? "" : ` am-node--${n.kind}`}"${keyAttr} data-step="${stepOf.get(n.line)}"${deltaAttr(n.state)}>`;
+    const step = n.kind === "state" ? link?.node(n.label) : null;
+    const open = `<g class="am-node am-node--state${n.kind === "state" ? "" : ` am-node--${n.kind}`}"${keyAttr} data-step="${stepOf2.get(n.line)}"${deltaAttr(n.state)}${step?.attrs ?? ""}>`;
+    const number = step ? stepBadgeSvg(step.n, rtl ? x2 + box.width / 2 : x2 - box.width / 2, y2 - box.height / 2) : "";
     if (n.kind === "initial") return `${open}<circle class="am-state-dot" cx="${f(x2)}" cy="${f(y2)}" r="${DOT_R}"/>${badge}</g>`;
     if (n.kind === "final") return `${open}<circle class="am-state-ring" cx="${f(x2)}" cy="${f(y2)}" r="${DOT_R}"/><circle class="am-state-core" cx="${f(x2)}" cy="${f(y2)}" r="2.8"/>${badge}</g>`;
-    return `${open}<rect class="am-node-shape" x="${f(x2 - box.width / 2)}" y="${f(y2 - box.height / 2)}" width="${f(box.width)}" height="${f(box.height)}" rx="8"/>${textLines(box.lines, x2, y2, LH3, ' class="am-node-text"', pageDir)}${badge}</g>`;
+    return `${open}<rect class="am-node-shape" x="${f(x2 - box.width / 2)}" y="${f(y2 - box.height / 2)}" width="${f(box.width)}" height="${f(box.height)}" rx="8"/>${textLines(box.lines, x2, y2, LH3, ' class="am-node-text"', pageDir)}${badge}${number}</g>`;
   });
   const xs = [];
   const ys = [];
@@ -8331,12 +8652,12 @@ function layout3(model, rankdir, id, ui, pageDir = "ltr", video = false) {
   const label = diagramLabel(ui, "state", names2);
   const heads = ["added", "removed"].filter((s) => edges.some((e) => e.state === s));
   const used = /* @__PURE__ */ new Set([
-    ...straight.map((e) => stepOf.get(e.line)),
-    ...loops.map((e) => stepOf.get(e.line)),
-    ...[...nodes.values()].map((n) => stepOf.get(n.line)),
-    ...[...nodes.values()].filter((n) => n.state === "changed").map((n) => stepOf.get(n.tildeLine ?? n.line))
+    ...straight.map((e) => stepOf2.get(e.line)),
+    ...loops.map((e) => stepOf2.get(e.line)),
+    ...[...nodes.values()].map((n) => stepOf2.get(n.line)),
+    ...[...nodes.values()].filter((n) => n.state === "changed").map((n) => stepOf2.get(n.tildeLine ?? n.line))
   ]);
-  const empty = video ? lines.map((line) => used.has(stepOf.get(line)) ? "" : `<g data-step="${stepOf.get(line)}"></g>`).join("") : "";
+  const empty = video ? lines.map((line) => used.has(stepOf2.get(line)) ? "" : `<g data-step="${stepOf2.get(line)}"></g>`).join("") : "";
   return `${svgOpen(width, height, label, pageDir)}${arrowDefs(id, heads)}<g${shift}><g>${edgeSvg.join("")}</g><g>${loopsSvg.join("")}</g><g>${nodeSvg.join("")}</g>${empty}</g></svg>`;
 }
 function edgeLabelSvg(label, x2, y2, pageDir) {
@@ -8581,7 +8902,7 @@ function layout4(model, rankdir, ui, pageDir = "ltr") {
   const rtl = pageDir === "rtl";
   if (rtl) mirrorLayout(g);
   const steps2 = [.../* @__PURE__ */ new Set([...[...entities.values()].map((e) => e.line), ...rels.map((r) => r.line)])].sort((a, b) => a - b);
-  const stepOf = new Map(steps2.map((line, i) => [line, i]));
+  const stepOf2 = new Map(steps2.map((line, i) => [line, i]));
   const straight = rels.filter((rel) => rel.from !== rel.to).map((rel, i) => {
     const data = g.edge({ v: key.get(rel.from), w: key.get(rel.to), name: `e${i}` });
     const points = data.points.map((p) => ({ ...p }));
@@ -8591,12 +8912,12 @@ function layout4(model, rankdir, ui, pageDir = "ltr") {
   });
   const edgeSvg = straight.map(({ rel, data, points }) => {
     const label2 = rel.label ? labelSvg(rel.label, data.x, data.y, pageDir) : "";
-    return `<g data-step="${stepOf.get(rel.line)}"${deltaAttr(rel.state)}><path class="am-edge" d="${smoothPath(points)}"/>${endsSvg(points, rel)}${label2}</g>`;
+    return `<g data-step="${stepOf2.get(rel.line)}"${deltaAttr(rel.state)}><path class="am-edge" d="${smoothPath(points)}"/>${endsSvg(points, rel)}${label2}</g>`;
   });
   const nodeSvg = [...entities.values()].map((entity) => {
     const { x: x2, y: y2 } = centre(entity.name);
     const size = sizes.get(entity.name);
-    return nodeSvgOf(entity, x2, y2, size, stepOf.get(entity.line), pageDir);
+    return nodeSvgOf(entity, x2, y2, size, stepOf2.get(entity.line), pageDir);
   });
   const s = rtl ? -1 : 1;
   const seen = /* @__PURE__ */ new Map();
@@ -8609,7 +8930,7 @@ function layout4(model, rankdir, ui, pageDir = "ltr") {
     const spec = below ? loopBelow({ x: x2, y: y2, height: size.height, depth, side: s, labelWidth: lw }) : loopBeside({ x: x2, y: y2, width: size.width, nth, side: s, labelWidth: lw });
     return { rel, ...spec };
   });
-  const loopsSvg = loopSpecs.map((spec) => loopSvg(spec, stepOf.get(spec.rel.line), pageDir));
+  const loopsSvg = loopSpecs.map((spec) => loopSvg(spec, stepOf2.get(spec.rel.line), pageDir));
   const xs = [];
   const ys = [];
   const at3 = (x2, y2) => {
@@ -8958,7 +9279,7 @@ function previewEnd(lines, openIdx) {
   }
   return -1;
 }
-function read(text2) {
+function readAsk(text2) {
   const lines = String(text2).split("\n");
   let question = null;
   const options = [];
@@ -9001,6 +9322,7 @@ var ask_default = {
   name: "ask",
   summary: "A decision the reader makes on the page (collected by Reply)",
   pageOnly: true,
+  pageOnlyReason: "a video cannot take answers",
   panelOnly: true,
   // Preview blocks are rendered with the page's scale, so the ask output must not take the factor again.
   scalesOwnSvg: true,
@@ -9042,7 +9364,7 @@ The question, one sentence
   render(text2, { args, uid, ui = {}, line = 0, render }) {
     const multi = /(^|\s)multi(\s|$)/.test(args);
     const cards = /(^|\s)cards(\s|$)/.test(args);
-    const { question, options } = read(text2);
+    const { question, options } = readAsk(text2);
     if (options.length < 2 || options.length > 6) throw new ComponentError(`ask: write 2 to 6 options, not ${options.length}`, question.line);
     const suggested = options.filter((o) => o.suggested).length;
     if (!multi && suggested !== 1) {
@@ -9218,18 +9540,18 @@ function drawBars(data, { horizontal = false, unit = "", dir = "ltr", label }) {
 var barClass = (m, row, k) => `am-ch-bar ${row.hi && m.count === 1 ? "am-ch-hi" : `am-ch-s${k + 1}`}`;
 var rowClass = (m, row) => `am-ch-row${m.anyHi ? row.hi ? " is-hi" : " is-dim" : ""}`;
 var rowGroup = (m, row, i, title, inner) => stepGroup(i, rowClass(m, row), title, inner);
-function planCategories(labels, from, to) {
+function planCategories(labels2, from, to) {
   for (let slot = from; slot <= to; slot += 6) {
-    const lines = labels.map((l3) => wrap(l3, slot - 8, FS4.cat));
+    const lines = labels2.map((l3) => wrap(l3, slot - 8, FS4.cat));
     if (lines.every((ls) => ls.length <= 2 && ls.every((l3) => measure(l3, FS4.cat) <= slot - 8 + 0.5))) return { slot, lines };
   }
-  return { slot: from, lines: null, shown: labels.map((l3) => shorten(l3, SLANT_MAX, FS4.cat)) };
+  return { slot: from, lines: null, shown: labels2.map((l3) => shorten(l3, SLANT_MAX, FS4.cat)) };
 }
 function verticalBars(m) {
-  const { rows, count: count2, range, labels, rtl, dir } = m;
+  const { rows, count: count2, range, labels: labels2, rtl, dir } = m;
   const n = rows.length;
-  const valueW = labels ? Math.max(...rows.flatMap((r) => r.values.map((v) => measure(m.tick(v), FS4.val)))) : 0;
-  const barMax = Math.min(64, Math.max(BAR_W[count2], labels ? Math.ceil(valueW) + 4 : 0));
+  const valueW = labels2 ? Math.max(...rows.flatMap((r) => r.values.map((v) => measure(m.tick(v), FS4.val)))) : 0;
+  const barMax = Math.min(64, Math.max(BAR_W[count2], labels2 ? Math.ceil(valueW) + 4 : 0));
   const budget = Math.floor(MAX_WIDTH / n);
   const natural = Math.min(budget, count2 * barMax + (count2 - 1) * GAP + GUTTER);
   const plan = planCategories(rows.map((r) => r.label), natural, Math.max(natural, Math.min(budget, SLOT_MAX)));
@@ -9240,9 +9562,9 @@ function verticalBars(m) {
   const axisX = PAD3 + Math.max(0, reach) + tickW + 6;
   const legend = legendLayout(m.names, Math.max(n * slot + tickW, 240));
   const W3 = Math.ceil(Math.max(axisX + n * slot + PAD3, (legend.width ?? 0) + 2 * PAD3));
-  const plotTop = PAD3 + legend.height + (labels ? 16 : 6);
+  const plotTop = PAD3 + legend.height + (labels2 ? 16 : 6);
   const plotBottom = plotTop + PLOT_H;
-  const negLabels = labels && range.min < 0;
+  const negLabels = labels2 && range.min < 0;
   const catTop = plotBottom + (negLabels ? 18 : 8);
   const catH = plan.lines ? Math.max(...plan.lines.map((ls) => ls.length)) * LH5 + 4 : Math.max(...plan.shown.map((l3) => measure(l3, FS4.cat))) * SIN + 12;
   const height = catTop + catH + PAD3;
@@ -9261,7 +9583,7 @@ function verticalBars(m) {
       const h2 = Math.max(Math.abs(y2(v) - y0), v === 0 ? 0 : 1);
       const top2 = v >= 0 ? y0 - h2 : y0;
       const bar = `<rect class="${barClass(m, row, k)}" x="${f(rectX(x2, bw))}" y="${f(top2)}" width="${bw}" height="${f(h2)}" rx="2"/>`;
-      if (!labels) return bar;
+      if (!labels2) return bar;
       const at3 = v >= 0 ? top2 - 4 : top2 + h2 + FS4.val + 1;
       return bar + text("am-ch-val", X3(x2 + bw / 2), at3, m.tick(v), dir, ' text-anchor="middle"');
     });
@@ -9271,16 +9593,16 @@ function verticalBars(m) {
   return { width: W3, height, body };
 }
 function horizontalBars(m) {
-  const { rows, count: count2, range, labels, rtl, dir } = m;
+  const { rows, count: count2, range, labels: labels2, rtl, dir } = m;
   const n = rows.length;
   const lines = rows.map((r) => fitLines(r.label, CAT_WIDTH, 3, FS4.cat));
   const catW = Math.max(...lines.flat().map((l3) => measure(l3, FS4.cat)));
   const bh = BAR_H[count2];
   const rowH = Math.max(count2 * bh + (count2 - 1) * GAP + 12, Math.max(...lines.map((ls) => ls.length)) * LH5 + 6);
   const rel = (v) => (v - range.min) / (range.max - range.min) * PLOT_W;
-  const widths = rows.map((r) => r.values.map((v) => labels ? measure(m.tick(v), FS4.val) : 0));
-  const after = labels ? Math.max(0, ...rows.flatMap((r, i) => r.values.map((v, k) => v >= 0 ? rel(v) + 4 + widths[i][k] - PLOT_W : 0))) : 0;
-  const before = labels ? Math.max(0, ...rows.flatMap((r, i) => r.values.map((v, k) => v < 0 ? widths[i][k] + 4 - rel(v) : 0))) : 0;
+  const widths = rows.map((r) => r.values.map((v) => labels2 ? measure(m.tick(v), FS4.val) : 0));
+  const after = labels2 ? Math.max(0, ...rows.flatMap((r, i) => r.values.map((v, k) => v >= 0 ? rel(v) + 4 + widths[i][k] - PLOT_W : 0))) : 0;
+  const before = labels2 ? Math.max(0, ...rows.flatMap((r, i) => r.values.map((v, k) => v < 0 ? widths[i][k] + 4 - rel(v) : 0))) : 0;
   const tickHalf = Math.max(...range.ticks.map((t) => measure(m.tick(t), FS4.tick))) / 2;
   const catX = PAD3 + catW;
   const axisX = Math.max(catX + 8 + before, PAD3 + tickHalf);
@@ -9306,7 +9628,7 @@ function horizontalBars(m) {
       const [from, to] = [Math.min(x0, x2(v)), Math.max(x0, x2(v))];
       const w2 = Math.max(to - from, v === 0 ? 0 : 1);
       const bar = `<rect class="${barClass(m, row, k)}" x="${f(rtl ? W3 - from - w2 : from)}" y="${f(by)}" width="${f(w2)}" height="${bh}" rx="2"/>`;
-      if (!labels) return bar;
+      if (!labels2) return bar;
       const end = v >= 0 ? x2(v) + 4 : x2(v) - 4;
       return bar + text("am-ch-val", X3(end), by + bh / 2, m.tick(v), dir, ` text-anchor="${v >= 0 ? "start" : "end"}" dominant-baseline="central"`);
     });
@@ -9349,15 +9671,15 @@ function shownRows(rows, step) {
   return rows.map((r, i) => his.includes(i) ? true : i % step === 0 && his.every((h2) => Math.abs(h2 - i) >= step));
 }
 function planAxis(rows, slot) {
-  const labels = rows.map((r) => r.label);
+  const labels2 = rows.map((r) => r.label);
   for (let step = 1; step <= Math.max(1, Math.floor(rows.length / 4)); step++) {
     const show2 = shownRows(rows, step);
     const room = step * slot - 8;
-    const lines = labels.map((l3, i) => show2[i] ? wrap(l3, room, FS4.cat) : null);
+    const lines = labels2.map((l3, i) => show2[i] ? wrap(l3, room, FS4.cat) : null);
     if (lines.every((ls) => !ls || ls.length <= 2 && ls.every((l3) => measure(l3, FS4.cat) <= room + 0.5))) return { show: show2, lines, widths: lines.map((ls) => ls ? Math.max(...ls.map((l3) => measure(l3, FS4.cat))) : 0) };
   }
   const show = shownRows(rows, Math.max(1, Math.ceil((LH5 + 1) / (slot * SIN))));
-  const shown2 = labels.map((l3) => shorten(l3, SLANT_MAX, FS4.cat));
+  const shown2 = labels2.map((l3) => shorten(l3, SLANT_MAX, FS4.cat));
   return { show, lines: null, shown: shown2, widths: shown2.map((l3) => measure(l3, FS4.cat)) };
 }
 function valueLabels(m, X3, x2, values, ys, { valleys, end, bottom }) {
@@ -9604,8 +9926,47 @@ function dataTable({ series, rows }, { type, unit }, words3) {
   return `<details class="am-ch-data${pie ? " am-ch-data--pie" : ""}"><summary>${esc(words3.data)}</summary><div class="am-table-wrap"><table>${head}<tbody>${body.join("")}</tbody></table></div></details>`;
 }
 
+// src/components/steps.js
+var steps_default = {
+  name: "steps",
+  summary: "Link a diagram to a code block, or walk through it step by step with an explanation per step",
+  syntax: `\`\`\`steps
+<item> <line or range>: <note>
+\`\`\`
+- Two modes. With a code block in the panel, a step links an item to lines of the code (below). With a diagram and no code block, a step is an item and its explanation (explain mode, at the end). The block draws nothing itself: it ties the pieces together, and they take the place of whichever of them you wrote first.
+- Code mode: put it in a panel with one code block and, optionally, one flow, state or tree diagram. <item> is the text of an item in the diagram, exactly as the diagram writes it (a flow node, a state, a tree entry). The lines are the last number or the range before the colon, N or N-M. The note is one short sentence. The first colon ends the item, so an item cannot hold a colon: to link a tree entry such as "Part 1: Writing rules", rename that entry in the diagram so it has no colon. Spaces around the dash of a range are fine (1 - 2).
+- Line numbers are the ones the code block shows: the file's own numbers with src= and lines=, the numbers from start=, else from 1. A linked code block always shows its line numbers.
+- The steps run in the order you write them. A diagram item with no step stays a plain item. Write no diagram, and the block is a step-by-step walkthrough of the code: the items are then just names for the steps.
+- On the page a click on an item boxes its lines, shows its note above them and marks its edges; a click on a line number picks the step that covers the line; the bar above the pair has Previous, Next and the step count; the arrow keys move and Esc clears. Side by side from about 720px of width, stacked below it.
+- In print, in a PNG or PDF and with no script, the page shows no bar and no boxes. Every step is numbered on its item and beside its first line, and a numbered list of the steps follows the pair.
+- Explain mode: put it in a panel with one flow, state or tree diagram and no code block, and write each step as <item>: <explanation>. The item is everything before the first colon, with no line numbers, so it may end in a number ("Step 2: ..."). The explanation is one short sentence of inline Markdown, and may be empty. The pair is the diagram and a numbered list of the steps, in the order you wrote the diagram and the steps block. Explain mode example:
+
+\`\`\`flow LR
+Order -> Pay -> Ship
+\`\`\`
+
+\`\`\`steps
+Order: The customer places the order.
+Pay: The payment is taken.
+Ship: The warehouse sends the parcel.
+\`\`\`
+
+- Explain mode on the page: the list stays beside the diagram; a click on an item or on a list entry, Enter or Space on either, the arrow keys, Previous and Next pick a step, which lights the item and its edges and marks its entry in the list. Esc clears. There is no note bar, because the list carries the explanation. Print, PNG, PDF and no script show the numbered badges on the diagram and the numbered list.
+- \`am render\` reports, with the draft line: an item that is not in the diagram or that matches more than one, the same item in two steps, a range outside the code block, two steps whose lines overlap, a panel with neither a code block nor a diagram, a panel with more than one code block or diagram, a second steps block, an image in a step, an item that ends with "-" (code mode), an item whose diagram entry holds a colon, a steps block inside an ask option, a diagram type that is not linked yet (er, class, sequence, timeline and chart), and a diff block. In explain mode a step written with lines ("Item 3-4: ...") is an item that is not in the diagram, and the message says that a step has no line numbers there.`,
+  example: "```steps\nUser 1-2: The user starts the request.\nGateway 3: The gateway checks it.\nService 4-5: The service does the work.\n```",
+  // A whole panel for am help steps and the docs: a code block, a diagram and the steps that link them.
+  specimen: "```js start=1\nconst request = receive(input);\nconst user = authenticate(request);\nconst result = await service.run(user);\nrespond(result);\n```\n\n```flow LR\nGateway -> Auth -> Service\n```\n\n```steps\nGateway 1: The request comes in.\nAuth 2: The user is checked.\nService 3-4: The service runs, then the answer goes back.\n```",
+  panelOnly: true,
+  pageOnly: true,
+  pageOnlyReason: "a video cannot click through steps",
+  // The pair is made by src/steps-panel.js. A steps block that reaches this point stands where no pair can be made (an ask option).
+  render() {
+    throw new ComponentError("steps: a steps block links the code block and the diagram of its own panel; it cannot go inside another block such as an ask option", 0);
+  }
+};
+
 // src/components/index.js
-var ALL2 = [callout_default, kv_default, timeline_default, annot_default, tree_default, limits_default, chart_default, sequence_default, flow_default, state_default, er_default, class_default, api_default, ask_default];
+var ALL2 = [callout_default, kv_default, timeline_default, annot_default, tree_default, limits_default, chart_default, sequence_default, flow_default, state_default, er_default, class_default, api_default, ask_default, steps_default];
 var COMPONENTS = new Map(ALL2.map((c) => [c.name, c]));
 var RAW_LANGS = /* @__PURE__ */ new Set(["html", "svg"]);
 
@@ -9672,7 +10033,7 @@ function parseDocLoose(source, { defaults: defaults2 = {}, choices = {} } = {}) 
   const { meta, bodyStart } = parseFrontmatter(lines, { ...DEFAULT_META, ...defaults2 }, { ...CHOICES, ...choices });
   const errors = [];
   const sections = splitSections(lines, bodyStart, errors);
-  const intro = extractTitle(sections.intro, meta);
+  const intro = dropLeadLabel(extractTitle(sections.intro, meta));
   const panels = assignIds(sections.panels);
   return { doc: { meta, intro, panels }, errors };
 }
@@ -9894,6 +10255,13 @@ function extractTitle(intro, meta) {
   if (!remaining.some((l3) => l3.trim())) return rest;
   return [{ ...first, text: remaining.join("\n"), line: first.line + idx + 1 }, ...rest];
 }
+var LEAD_LABEL = /^((?:[ \t]*\n)*)[ \t]{0,3}(?:\*\*lead[ \t]*[:：]\*\*|\*\*lead\*\*[ \t]*[:：]|lead[ \t]*[:：])[ \t]*/i;
+function dropLeadLabel(intro) {
+  const [first, ...rest] = intro;
+  if (first?.type !== "md" || !LEAD_LABEL.test(first.text)) return intro;
+  const text2 = first.text.replace(LEAD_LABEL, "$1");
+  return text2.trim() ? [{ ...first, text: text2 }, ...rest] : rest;
+}
 function assignIds(panels) {
   const used = /* @__PURE__ */ new Set();
   const firstById = /* @__PURE__ */ new Map();
@@ -9921,15 +10289,15 @@ function assignIds(panels) {
   return panels.map((p) => p.id ? p : { ...p, id: nextFree() });
 }
 function stripLineComment(line) {
-  let quote = "";
+  let quote2 = "";
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
-    if (quote) {
-      if (c === quote) quote = "";
+    if (quote2) {
+      if (c === quote2) quote2 = "";
       continue;
     }
     if (c === '"' || c === "'") {
-      quote = c;
+      quote2 = c;
       continue;
     }
     if (c === "#" && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i);
@@ -9976,7 +10344,7 @@ function headHtml(meta, introHtml, language = {}) {
 }
 
 // src/templates/sheet.js
-var ruler = (side, labels) => `<div class="am-ruler am-ruler--${side}" aria-hidden="true">${labels.map((l3) => `<span>${l3}</span>`).join("")}</div>`;
+var ruler = (side, labels2) => `<div class="am-ruler am-ruler--${side}" aria-hidden="true">${labels2.map((l3) => `<span>${l3}</span>`).join("")}</div>`;
 function fillRows(panels, cols) {
   const spans = panels.map((p) => Math.max(1, Math.min(Number(p.attrs.span) || 1, cols)));
   if (panels.some((p) => Number(p.attrs.rows) > 1)) return spans;
@@ -9985,9 +10353,9 @@ function fillRows(panels, cols) {
     if (used + span > cols) used = 0;
     used += span;
     const next = spans[i + 1];
-    const fill2 = next === void 0 || used + next > cols ? cols - used : 0;
-    used = fill2 || used === cols ? 0 : used;
-    return span + fill2;
+    const fill3 = next === void 0 || used + next > cols ? cols - used : 0;
+    used = fill3 || used === cols ? 0 : used;
+    return span + fill3;
   });
 }
 var WIDE_TABLE_COLS = 4;
@@ -10020,7 +10388,7 @@ function sheet({ meta, introHtml, panels, language }) {
 ${headHtml(meta, introHtml, language)}
 <div class="am-frame">
 ${ruler("top", nums)}${ruler("bottom", nums)}${ruler("left", letters)}${ruler("right", letters)}
-<div class="am-grid" style="--cols: ${cols}">
+<div class="am-grid${cols === 1 ? " am-grid--single" : ""}" style="--cols: ${cols}">
 ${placed.map((p, i) => panelHtml(p, { cols, hints: { span: panels[i].attrs.span } })).join("\n")}
 </div>
 </div>
@@ -10075,11 +10443,11 @@ var videoSel = (t) => `html[data-video][data-theme="${t.name}"]`;
 var scoped = (css, sel) => css.replace(/&/g, sel);
 var languageFontCss = () => fontLanguages().map((l3) => block(langSelector(l3, "html", "[data-theme][data-mode]"), { "--font-sans": l3.fonts.sans }));
 var ownLanguageFont = (t) => fontLanguages().map((l3) => block(langSelector(l3, "html", `[data-theme="${t.name}"][data-mode]`), { "--font-sans": t.tokens.common["--font-sans"] }));
-function pageCss(list2 = themes("page"), { diff = false, delta = false, rtl = false, math: math2 = false, chart = false, table = false, update: update2 = false, closeAfter = false, fonts = true, scale = 1 } = {}) {
+function pageCss(list2 = themes("page"), { diff = false, delta = false, rtl = false, math: math2 = false, chart = false, steps: steps2 = false, table = false, update: update2 = false, closeAfter = false, fonts = true, scale = 1 } = {}) {
   const decorations = list2.filter((t) => t.css).map((t) => scoped(t.css, pageSel(t)));
   const fontFaces = fonts ? [...new Set(list2.map((t) => t.font).filter((f2) => f2 && FONT_CSS[f2]))].map((f2) => FONT_CSS[f2]) : [];
   const ownFonts = list2.filter((t) => t.ownFont).flatMap(ownLanguageFont);
-  return [list2.map((t) => tokenCss(pageSel(t), t.tokens, t.mode)).join("\n\n"), ...languageFontCss(), ...ownFonts, typeScaleCss(), ...scale === 1 ? [] : [`html { --am-scale: ${scale}; }`], BASE_CSS, ...math2 ? [MATH_CSS] : [], ...chart ? [CHART_CSS] : [], ...table ? [TABLE_CSS] : [], ...diff ? [DIFF_CSS] : [], ...delta ? [DELTA_CSS] : [], ...update2 ? [UPDATE_CSS] : [], ...closeAfter ? [CLOSE_AFTER_CSS] : [], ...rtl ? [RTL_CSS] : [], ...fontFaces, ...decorations].join("\n\n");
+  return [list2.map((t) => tokenCss(pageSel(t), t.tokens, t.mode)).join("\n\n"), ...languageFontCss(), ...ownFonts, typeScaleCss(), ...scale === 1 ? [] : [`html { --am-scale: ${scale}; }`], BASE_CSS, ...math2 ? [MATH_CSS] : [], ...chart ? [CHART_CSS] : [], ...table ? [TABLE_CSS] : [], ...diff ? [DIFF_CSS] : [], ...delta ? [DELTA_CSS] : [], ...steps2 ? [STEPS_CSS] : [], ...update2 ? [UPDATE_CSS] : [], ...closeAfter ? [CLOSE_AFTER_CSS] : [], ...rtl ? [RTL_CSS] : [], ...fontFaces, ...decorations].join("\n\n");
 }
 function videoCss(list2 = themes("video"), { diff = false, delta = false, rtl = false, chart = false } = {}) {
   const parts = list2.filter((t) => t.video).flatMap((t) => [
@@ -10440,7 +10808,7 @@ function resolveLanguage({ declared, previous, text: text2 = "" }) {
   const tag = declaredTag ?? canonicalTag(previous) ?? detectLang(text2);
   const locale = new Intl.Locale(tag).maximize();
   const entry = findLanguage(locale.language, locale.script);
-  const labels = entry ?? FALLBACK;
+  const labels2 = entry ?? FALLBACK;
   return Object.freeze({
     tag,
     declared: declaredTag !== null,
@@ -10448,11 +10816,11 @@ function resolveLanguage({ declared, previous, text: text2 = "" }) {
     script: locale.script,
     dir: directionOf(locale),
     supported: Boolean(entry),
-    labelKey: labels.id,
-    ui: labels.deltaCounts ? { ...labels.ui, delta: { ...labels.ui.delta, counts: labels.deltaCounts } } : labels.ui,
-    videoUi: labels.videoUi,
-    metaKeys: labels.metaKeys ?? {},
-    dateOrder: labels.dateOrder ?? "ymd"
+    labelKey: labels2.id,
+    ui: labels2.deltaCounts ? { ...labels2.ui, delta: { ...labels2.ui.delta, counts: labels2.deltaCounts } } : labels2.ui,
+    videoUi: labels2.videoUi,
+    metaKeys: labels2.metaKeys ?? {},
+    dateOrder: labels2.dateOrder ?? "ymd"
   });
 }
 
@@ -10614,8 +10982,9 @@ function localPath(ref, baseDir) {
   const rel = relative(baseDir, path);
   return rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel) ? null : path;
 }
+var isSecretPath = (rel) => SECRET_FILE.test(basename2(rel)) || rel.split(sep).some((part) => SECRET_DIR.has(part));
 function assertNotSecret(ref, rel, via) {
-  if (SECRET_FILE.test(basename2(rel)) || rel.split(sep).some((part) => SECRET_DIR.has(part))) {
+  if (isSecretPath(rel)) {
     throw new CodeError(`"${ref}" ${via ? "points to" : "is"} a file that holds keys or passwords by convention; it is not embedded. Write a sketch instead`);
   }
 }
@@ -10660,7 +11029,7 @@ function readEmbeddedCode(html) {
     [...inner.matchAll(LINE_SPAN)].map((m) => unescapeHtml(m[1]))
   ]));
 }
-function renderCode({ lang, args, text: text2 }, { baseDir = process.cwd(), known = /* @__PURE__ */ new Map(), ui = {}, copy = true } = {}) {
+function renderCode({ lang, args, text: text2, linked = false }, { baseDir = process.cwd(), known = /* @__PURE__ */ new Map(), ui = {}, copy = true } = {}) {
   const isDiff = lang === "diff";
   const opts = parseCodeArgs(args, isDiff);
   if (isDiff && opts.src) throw new CodeError("a diff block takes the diff you paste; src= is not supported for it yet, so paste the diff into the block", 0, DIFF_EXAMPLE);
@@ -10683,7 +11052,7 @@ function renderCode({ lang, args, text: text2 }, { baseDir = process.cwd(), know
   if (body.length > MAX_CODE_LINES) throw new CodeError(`the block has ${body.length} lines; quote ${MAX_CODE_LINES} lines at most, and pick the lines that make the point`);
   const slice = body.join("\n");
   if (SECRET_TEXT.test(slice)) throw new CodeError(`${opts.src ? `"${opts.src}"` : "the block"} looks like it holds a key or a token; it is not embedded. Quote other lines or write a sketch`);
-  const copyButton = copy ? `<button class="am-code-copy" type="button" data-am="copy-code" data-done="${esc(ui.done ?? "Copied \u2713")}">${esc(ui.copyCode ?? "Copy")}</button>` : "";
+  const copyButton = copy ? `<button class="am-code-copy" type="button" data-am="copy-code" data-done="${esc(ui.done ?? "Copied \u2713")}" data-failed="${esc(ui.failed ?? "Copy failed")}">${esc(ui.copyCode ?? "Copy")}</button>` : "";
   const long = body.length > LONG_CODE_LINES ? [{ rule: "code-length", message: `the block has ${body.length} lines; readers skim past long code. Pick the 10 to ${LONG_CODE_LINES} lines that make the point` }] : [];
   if (isDiff) return renderDiff(text2, opts, { copyButton, long });
   const last = first + body.length - 1;
@@ -10691,7 +11060,7 @@ function renderCode({ lang, args, text: text2 }, { baseDir = process.cwd(), know
   const outside = [...hl].find((n) => n < first || n > last);
   if (outside !== void 0) throw new CodeError(`hl=${opts.hl}: line ${outside} is not in the block (lines ${first}-${last})`);
   const shownLang = lang || (opts.src ? extname(opts.src).slice(1).toLowerCase() : "");
-  const numbered = Boolean(opts.src || opts.start);
+  const numbered = Boolean(opts.src || opts.start || linked);
   const where = opts.src ? `${opts.src}${range ? `:${range.from === range.to ? range.from : `${range.from}-${range.to}`}` : ""}` : "";
   const title = opts.title ?? where;
   const lines = body.map((l3, i) => {
@@ -10820,6 +11189,102 @@ function readEmbeddedImages(html) {
   return new Map([...String(html).matchAll(EMBEDDED)].map(([, src, uri]) => [decodeRef(src), uri]));
 }
 
+// src/refs.js
+import { lstatSync, readFileSync as readFileSync4, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
+import { isAbsolute as isAbsolute3, join as join2, relative as relative2, sep as sep3 } from "node:path";
+var REF = /^([^\s:`]+):(\d+)(?:-(\d+))?$/;
+var FILE_LIKE = /\/|\.[A-Za-z][\w-]*$/;
+var INLINE_PARTS = new Map(Object.entries({
+  tree: { lines: (text2) => String(text2).split("\n").map((raw, i) => ({ text: raw.trim(), line: i + 1 })).filter((l3) => l3.text), parts: (t) => fields(t).slice(0, 2) },
+  // label and note; tree ignores a third field
+  timeline: { lines: contentLines, parts: (t) => fields(t).slice(1, 3) },
+  // title and note; the time is plain text
+  kv: { lines: contentLines, parts: (t) => [(t.startsWith("*") ? t.slice(1).trim() : t).match(/^[^:：]+[:：]\s*(.*)$/)?.[1] ?? ""] }
+  // the value; the key is plain text
+}));
+function inlineTexts(block2) {
+  if (block2.type === "md") return [{ text: block2.text, line: block2.line, inline: false }];
+  if (block2.lang === "callout") return [{ text: block2.text, line: block2.line + 1, inline: false }];
+  if (block2.lang === "ask") return askTexts(block2);
+  const component = INLINE_PARTS.get(block2.lang);
+  if (!component) return [];
+  return component.lines(block2.text).flatMap(({ text: text2, line }) => component.parts(text2).map((part) => ({ text: part, line: block2.line + line, inline: true })));
+}
+function askTexts(block2) {
+  let ask;
+  try {
+    ask = readAsk(block2.text);
+  } catch {
+    return [];
+  }
+  return [
+    { text: ask.question.text, line: block2.line + ask.question.line, inline: true },
+    ...ask.options.flatMap((o) => [
+      { text: o.label, line: block2.line + o.line, inline: true },
+      { text: o.note, line: block2.line + o.line, inline: true },
+      ...o.preview ? inlineTexts({ type: "fence", lang: o.preview.lang, text: o.preview.text, line: block2.line + o.preview.line }) : []
+    ])
+  ];
+}
+function checkRefs(blocks, { baseDir }) {
+  const files = /* @__PURE__ */ new Map();
+  const warnings = [];
+  for (const { text: text2, line, inline: inline2 } of blocks.flatMap(inlineTexts)) {
+    for (const span of codeSpans(text2, { inline: inline2 })) {
+      const problem = checkRef(span.text.trim(), baseDir, files);
+      if (problem) warnings.push({ line: line + span.line, rule: "ref", message: problem });
+    }
+  }
+  return warnings.sort((a, b) => a.line - b.line);
+}
+function checkRef(text2, baseDir, files) {
+  const m = text2.match(REF);
+  if (!m || !FILE_LIKE.test(m[1]) || isAbsolute3(m[1]) || /^[~\\]/.test(m[1]) || m[1].includes("\\")) return null;
+  const [, path, a, b = a] = m;
+  const from = Number(a);
+  const to = Number(b);
+  if (!files.has(path)) files.set(path, inspect(path, baseDir));
+  const file = files.get(path);
+  if (!file) return null;
+  if (from < 1) return `\`${text2}\`: lines start at 1`;
+  if (to < from) return `\`${text2}\`: the first line comes after the last; write ${path}:${to}-${from}`;
+  if (file.missing) return `\`${text2}\`: no such file in ${baseDir}`;
+  if (file.folder) return `\`${text2}\`: ${path} is a folder, not a file`;
+  if (to > file.lines) return `\`${text2}\`: the file has ${file.lines} line${file.lines === 1 ? "" : "s"}`;
+  return null;
+}
+function inspect(path, baseDir) {
+  const written = localPath(path, baseDir);
+  const rel = written && relative2(baseDir, written);
+  if (!rel || isSecretPath(rel)) return null;
+  if (!exists(written)) {
+    const parts = rel.split(sep3);
+    return parts.length > 1 && exists(join2(baseDir, parts[0])) ? { missing: true } : null;
+  }
+  try {
+    const real = realpathSync3(written);
+    const root = realpathSync3(baseDir);
+    if (!localPath(real, root) || isSecretPath(relative2(root, real))) return null;
+    const stat2 = statSync3(real);
+    if (stat2.isDirectory()) return { folder: true };
+    if (!stat2.isFile() || stat2.size > MAX_FILE_BYTES) return null;
+    const buf = readFileSync4(real);
+    if (buf.includes(0)) return null;
+    const text2 = buf.toString("utf8").replace(/\r\n?/g, "\n").replace(/\n$/, "");
+    return { lines: text2 ? text2.split("\n").length : 0 };
+  } catch {
+    return null;
+  }
+}
+function exists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // src/sha256.js
 var K3 = Uint32Array.from({ length: 64 }, (_2, i) => {
   let n = 2;
@@ -10891,6 +11356,121 @@ function cspMeta(scripts, { live = false } = {}) {
   return `<meta http-equiv="Content-Security-Policy" content="${policy}">`;
 }
 
+// src/steps-panel.js
+var isFence = (b, lang) => b.type === "fence" && b.lang === lang;
+var isCode = (b) => b.type === "fence" && !COMPONENTS.has(b.lang) && !RAW_LANGS.has(b.lang);
+var DIAGRAMS = /* @__PURE__ */ new Set(["flow", "state", "tree", "er", "class", "sequence", "timeline", "chart"]);
+var LINKED = ["flow", "state", "tree"];
+var article = (word) => /^[aeiou]/.test(word) ? "an" : "a";
+var quote = (labels2) => [...new Set(labels2.map((l3) => String(l3).replace(/`/g, "")).filter((l3) => !l3.includes(":")))].slice(0, 8).join(", ");
+function pickBlocks(rest, first, problem) {
+  const codes = rest.filter(isCode);
+  const diagrams = rest.filter((b) => b.type === "fence" && DIAGRAMS.has(b.lang));
+  if (codes.length === 0 && diagrams.length === 0) return problem("steps: needs a code block or a diagram in the same panel; add the code the steps walk through, or the diagram they explain", first.line);
+  if (codes.length > 1) return problem(`steps: link one code block, not ${codes.length}; give each code block its own panel and steps block`, first.line);
+  if (diagrams.length > 1) return problem(`steps: link one diagram, not ${diagrams.length}; give each diagram its own panel and steps block`, first.line);
+  const [code] = codes;
+  const [diagram] = diagrams;
+  if (code?.lang === "diff") return problem("steps: a diff block is not linked; link a code block, which shows its own line numbers", first.line);
+  if (diagram && !LINKED.includes(diagram.lang)) {
+    return problem(`steps: ${article(diagram.lang)} ${diagram.lang} diagram is not linked yet; steps links flow, state and tree diagrams`, first.line);
+  }
+  return { code, diagram };
+}
+var EXPLAIN_EXAMPLE = "```flow\nCart -> Pay -> Ship\n```\n\n```steps\nCart: The customer fills the cart.\nPay: The payment goes through.\nShip: The warehouse sends the parcel.\n```";
+function renderPanel(blocks, ctx, host) {
+  const { renderBlocks: renderBlocks2, RenderError: RenderError2 } = host;
+  const [first, ...extra] = blocks.filter((b) => isFence(b, "steps"));
+  if (!first || ctx.video) return renderBlocks2(blocks, ctx);
+  const rest = blocks.filter((b) => !isFence(b, "steps"));
+  const explain = !rest.some(isCode) && rest.some((b) => b.type === "fence" && DIAGRAMS.has(b.lang));
+  const example = explain ? EXPLAIN_EXAMPLE : COMPONENTS.get("steps").example;
+  const problem = (message, line) => {
+    const err = new RenderError2(message, { line, component: "steps", example });
+    if (!ctx.errors) throw err;
+    ctx.errors.push(err);
+    return null;
+  };
+  ctx.stats.components.steps = (ctx.stats.components.steps ?? 0) + 1;
+  for (const b of extra) problem("steps: one steps block per panel; put the second one under its own ## heading, with its own code block", b.line);
+  const picked = pickBlocks(rest, first, problem);
+  if (!picked) return renderBlocks2(rest, ctx);
+  let steps2;
+  try {
+    steps2 = parseSteps(first.text, picked.code ? "code" : "explain");
+  } catch (err) {
+    if (!(err instanceof ComponentError)) throw err;
+    problem(err.message, first.line + (err.line || 0));
+    return renderBlocks2(rest, ctx);
+  }
+  return assemble({ blocks, rest, ...picked, steps: steps2, first }, ctx, host, problem);
+}
+function assemble({ blocks, rest, code, diagram, steps: steps2, first }, ctx, host, problem) {
+  const { renderBlocks: renderBlocks2, renderBlock: renderBlock2, RenderError: RenderError2 } = host;
+  const attempt = (draw2) => {
+    try {
+      return draw2();
+    } catch (err) {
+      if (!(err instanceof RenderError2) || !ctx.errors) throw err;
+      ctx.errors.push(err);
+      return null;
+    }
+  };
+  const codeHtml = code ? attempt(() => renderBlock2({ ...code, linked: true }, ctx)) : null;
+  if (code && codeHtml === null) return renderBlocks2(rest.filter((b) => b !== code), ctx);
+  const link = makeLink(steps2, ctx.ui);
+  const diagramHtml = diagram ? attempt(() => renderBlock2({ ...diagram, link }, ctx)) : "";
+  if (diagramHtml === null) return renderBlocks2(rest.filter((b) => b !== diagram), ctx);
+  checkSteps(steps2, { link, hasDiagram: Boolean(diagram), codeHtml }, (message, step) => problem(message, first.line + step.line));
+  const diagramPart = diagram ? `<div class="am-steps-diagram">${groupSvg(diagramHtml)}</div>` : "";
+  const second = code ? markCodeLines(codeHtml, steps2) : explainList(steps2, ctx.ui);
+  const secondFirst = blocks.indexOf(code ?? first) < blocks.indexOf(diagram);
+  const pair = diagram && secondFirst ? `${second}${diagramPart}` : `${diagramPart}${second}`;
+  const block2 = stepsBlock(pair, steps2, ctx.ui, code ? "code" : "explain");
+  const members = new Set([diagram, code ?? first].filter(Boolean));
+  const at3 = blocks.map((b, i) => members.has(b) ? i : -1).filter((i) => i >= 0);
+  const [head, tail] = [Math.min(...at3), Math.max(...at3)];
+  const part = (list2) => list2.length ? renderBlocks2(list2, ctx) : "";
+  const others = (from, to) => blocks.slice(from, to).filter((b) => !members.has(b) && !isFence(b, "steps"));
+  return [part(others(0, head)), block2, part(others(head, tail)), part(others(tail))].filter(Boolean).join("\n");
+}
+function shownLines(codeHtml) {
+  const numbers = [...codeHtml.matchAll(/ data-n="(\d+)"/g)].map((m) => Number(m[1]));
+  return { from: Math.min(...numbers), to: Math.max(...numbers) };
+}
+function colonLabel(step, labels2) {
+  const starts = [step.item, step.head].map((t) => `${normalize(t)}:`);
+  return labels2.map(normalize).find((l3) => starts.some((prefix) => l3.startsWith(prefix)));
+}
+var LINES_HINT = "; with no code block, a step has no line numbers";
+var endsInNumber = (text2) => /\s\d+(?:\s*-\s*\d+)?$/.test(text2);
+function checkSteps(steps2, { link, hasDiagram, codeHtml }, report) {
+  const shown2 = codeHtml === null ? null : shownLines(codeHtml);
+  const taken = /* @__PURE__ */ new Map();
+  steps2.forEach((step, i) => {
+    if (hasDiagram) {
+      const same = steps2.findIndex((s) => normalize(s.item) === normalize(step.item));
+      if (same < i) return report(`steps: "${step.item}" is already step ${same + 1}; give each item one step`, step);
+      const count2 = link.matches[i];
+      if (count2 === 0) {
+        const withColon = colonLabel(step, link.seen);
+        if (withColon) return report(`steps: a linked item cannot contain a colon, because the first colon ends the item; rename the diagram entry "${withColon}" so it has no colon`, step);
+        const hint = !shown2 && endsInNumber(step.item) ? LINES_HINT : "";
+        return report(`steps: "${step.item}" is not an item of the diagram; write the text of an item exactly as the diagram does${quote(link.seen) ? ` (${quote(link.seen)})` : ""}${hint}`, step);
+      }
+      if (count2 > 1) return report(`steps: "${step.item}" matches ${count2} items of the diagram; give those items different text`, step);
+    }
+    if (!shown2) return;
+    if (step.from < shown2.from || step.to > shown2.to) {
+      const where = step.from === step.to ? `${linesName(step)} is not in` : `${linesName(step)} are not all in`;
+      return report(`steps: ${where} the code block (lines ${shown2.from}-${shown2.to})`, step);
+    }
+    const clash = [...taken].find(([, other]) => step.from <= other.to && other.from <= step.to);
+    if (clash) return report(`steps: step ${i + 1} overlaps step ${clash[0] + 1} (${linesName(clash[1])}); give each step its own lines`, step);
+    taken.set(i, step);
+  });
+}
+
 // src/render.js
 var RenderError = class extends Error {
   constructor(message, { line, component, example } = {}) {
@@ -10922,7 +11502,8 @@ function renderDoc(source, overrides = {}, defaults2 = {}, { themes: themes2 = B
     raiseAll(errors);
     throw new LintError(warnings);
   }
-  const stats = { panels: doc2.panels.length, components: {}, code: [], codeWarnings: [], componentWarnings: [], htmlWarnings: [], mathWarnings: [] };
+  const refWarnings = codeDir ? checkRefs([...doc2.intro, ...doc2.panels.flatMap((p) => p.blocks)], { baseDir: codeDir }) : [];
+  const stats = { panels: doc2.panels.length, components: {}, code: [], codeWarnings: [], refWarnings, componentWarnings: [], htmlWarnings: [], mathWarnings: [] };
   const ui = language.ui;
   const ctx = { seq: 0, stats, errors, ui, dir: language.dir, scale, images: { baseDir, known: knownImages }, code: { baseDir: codeDir, known: knownCode } };
   const loose = doc2.intro.filter((b) => b.type === "fence" && COMPONENTS.get(b.lang)?.panelOnly);
@@ -10930,7 +11511,8 @@ function renderDoc(source, overrides = {}, defaults2 = {}, { themes: themes2 = B
     errors.push(new RenderError(`${b.lang} belongs in a panel: put it under the ## heading of the panel the answer changes`, { line: b.line, component: b.lang, example: COMPONENTS.get(b.lang).example }));
   }
   const introHtml = renderBlocks(doc2.intro.filter((b) => !loose.includes(b)), ctx);
-  const panels = doc2.panels.map((p) => ({ ...p, html: renderBlocks(p.blocks, ctx) }));
+  const host = { renderBlocks, renderBlock, RenderError };
+  const panels = doc2.panels.map((p) => ({ ...p, html: renderPanel(p.blocks, ctx, host) }));
   raiseAll(errors);
   const page = TEMPLATES[doc2.meta.template]({ meta: doc2.meta, introHtml, panels, ui, language });
   const body = language.dir === "rtl" ? isolateLtrRuns(page) : page;
@@ -11021,7 +11603,7 @@ function renderFence(block2, ctx) {
   }
   const comp = COMPONENTS.get(lang);
   if (!comp) return codeBlock(block2, ctx);
-  if (comp.pageOnly && ctx.video) throw new RenderError(`${lang} works on a page only; a video cannot take answers`, { line, component: lang, example: comp.example });
+  if (comp.pageOnly && ctx.video) throw new RenderError(`${lang} works on a page only; ${comp.pageOnlyReason ?? "a video cannot show it"}`, { line, component: lang, example: comp.example });
   ctx.stats.components[lang] = (ctx.stats.components[lang] ?? 0) + 1;
   try {
     const warn = ({ line: at3 = 0, message }) => ctx.stats.componentWarnings?.push({ line: line + at3, component: lang, message });
@@ -11033,7 +11615,8 @@ function renderFence(block2, ctx) {
       video: ctx.video,
       warn,
       line,
-      render: (blocks) => renderBlocks(blocks, ctx)
+      render: (blocks) => renderBlocks(blocks, ctx),
+      link: block2.link
     });
     return ctx.video || comp.scalesOwnSvg ? html : scaleSvgBoxes(html, ctx.scale ?? 1);
   } catch (err) {
@@ -11080,14 +11663,14 @@ function updateNotice(ui, update2, labelKey) {
 <ul class="am-update-notes">${lines.map((l3) => `<li>${esc(l3).replace(/`([^`]+)`/g, "<code>$1</code>")}</li>`).join("")}</ul>
 ` : "";
   const plain = t.button.replace("{version}", update2.latest);
-  const fill2 = (s) => esc(s).replace("{version}", `<bdi>${esc(update2.latest)}</bdi>`).replace("{current}", `<bdi>${esc(update2.current)}</bdi>`);
+  const fill3 = (s) => esc(s).replace("{version}", `<bdi>${esc(update2.latest)}</bdi>`).replace("{current}", `<bdi>${esc(update2.current)}</bdi>`);
   const row = (text2, code) => `<div class="am-update-row">${code ? `<code dir="ltr">${esc(text2)}</code>` : `<span>${esc(text2)}</span>`}<button class="am-btn" type="button" data-am="copy-text" data-text="${esc(text2)}" data-done="${esc(ui.done)}">${esc(ui.copyCode)}</button></div>`;
   return {
-    button: `<button class="am-btn am-btn--update" type="button" data-am="update" popovertarget="am-update" aria-label="${esc(plain)}" hidden>\u25CF <span class="am-update-text">${fill2(t.button)}</span></button>
+    button: `<button class="am-btn am-btn--update" type="button" data-am="update" popovertarget="am-update" aria-label="${esc(plain)}" hidden>\u25CF <span class="am-update-text">${fill3(t.button)}</span></button>
 `,
     popover: `<div class="am-update" id="am-update" popover>
-<p class="am-update-title">${fill2(t.button)}</p>
-<p>${fill2(t.current)}</p>
+<p class="am-update-title">${fill3(t.button)}</p>
+<p>${fill3(t.current)}</p>
 ${notes}<p class="am-update-label">${esc(t.run)}</p>
 ${row(update2.command, true)}
 <p class="am-update-label">${esc(t.agent)}</p>
@@ -11097,10 +11680,25 @@ ${row(t.agentText, false)}
 `
   };
 }
+function exportMenu(ui) {
+  const t = ui.export;
+  const item = (kind2, label) => `<button class="am-export-item" type="button" role="menuitem" data-export="${kind2}" aria-describedby="am-export-${kind2}-note"><span>${esc(label)}</span><small class="am-export-note" id="am-export-${kind2}-note" aria-hidden="true"></small></button>`;
+  const labels2 = [["working", t.working], ["copied", t.copied], ["saved", t.saved], ["failed", t.failed], ["unavailable-browser", t.unavailableBrowser], ["unavailable-clipboard", t.unavailableClipboard], ["unavailable-policy", t.unavailablePolicy], ["unverified-effect", t.unverifiedEffect]].map(([key, text2]) => `data-${key}="${esc(text2)}"`).join(" ");
+  return {
+    button: `<button class="am-btn am-btn--export" type="button" data-am="export" popovertarget="am-export" aria-haspopup="menu" aria-expanded="false" aria-controls="am-export" hidden>${esc(t.button)}</button>`,
+    menu: `<div class="am-export" id="am-export" popover role="menu" aria-label="${esc(t.button)}" ${labels2}>
+${item("copy", t.copy)}
+${item("download", t.download)}
+${item("pdf", t.pdf)}
+</div>
+`
+  };
+}
 function withoutUpdateNotice(html) {
   return html.replace(/<button class="am-btn am-btn--update"[^]*?<\/button>\n/, "").replace(/<div class="am-update" id="am-update" popover>[^]*?\n<\/div>\n/, "");
 }
 var hasDelta = (html) => html.includes('class="am-delta-bar"');
+var hasSteps = (html) => html.includes('class="am-steps"');
 var hasChart = (html) => html.includes('class="am-diagram am-chart"');
 function lightboxShell(ui, hasDiagrams) {
   if (!hasDiagrams) return "";
@@ -11130,11 +11728,12 @@ function scaleButtons(ui) {
 function shell({ meta, language, body, source, embedded, update: update2, closeAfter, colophon: colophon2, scale }) {
   const { ui, labelKey } = language;
   const notice = updateNotice(ui, update2, labelKey);
+  const exporter = exportMenu(ui);
   const pick = (name2, label, values, current) => `<label class="am-pick">${esc(label)}<select data-am="${name2}">${values.map(([value, text2]) => `<option value="${esc(value)}"${value === current ? " selected" : ""}>${esc(text2)}</option>`).join("")}</select></label>`;
   const root = { lang: language.htmlLang, dir: language.dir, theme: meta.theme, mode: meta.mode, style: meta.style, scale };
   const interactiveTable = body.includes("<table data-am-table=");
   const script = `
-${RUNTIME_JS}${interactiveTable ? TABLE_JS : ""}${hasDelta(body) ? DELTA_JS : ""}${update2 ? UPDATE_JS : ""}${closeAfter ? CLOSE_AFTER_JS : ""}`;
+${RUNTIME_JS}${interactiveTable ? TABLE_JS : ""}${hasDelta(body) ? DELTA_JS : ""}${hasSteps(body) ? STEPS_JS : ""}${update2 ? UPDATE_JS : ""}${closeAfter ? CLOSE_AFTER_JS : ""}`;
   return `<!doctype html>
 ${rootTag(root)}
 <head>
@@ -11144,7 +11743,7 @@ ${cspMeta([script], { live: true })}
 <meta name="generator" content="Answer me with HTML ${VERSION}">
 <title>${esc(meta.title || "Answer me with HTML")}</title>
 <style>
-${pageCss(embedded, { diff: body.includes('class="am-codeblock am-codeblock--diff"'), delta: hasDelta(body), rtl: language.dir === "rtl", math: hasMath(body), chart: hasChart(body), table: interactiveTable, update: Boolean(update2), closeAfter, scale })}
+${pageCss(embedded, { diff: body.includes('class="am-codeblock am-codeblock--diff"'), delta: hasDelta(body), rtl: language.dir === "rtl", math: hasMath(body), chart: hasChart(body), steps: hasSteps(body), table: interactiveTable, update: Boolean(update2), closeAfter, scale })}
 </style>
 </head>
 <body>
@@ -11154,10 +11753,10 @@ ${pick("mode", ui.modeLabel, Object.entries(ui.mode), meta.mode)}
 ${scaleButtons(ui)}
 <button class="am-btn am-btn--reply" type="button" data-am="reply" data-ui="${esc(JSON.stringify({ ...ui.reply, done: ui.done, remarks: ui.remark.section, kinds: ui.remark.kinds, ...closeAfter ? { closeAfter: { seconds: CLOSE_AFTER_SECONDS, ...ui.closeAfter } } : {} }))}">${esc(ui.reply.button)}</button>
 <button class="am-btn am-btn--remark" type="button" data-am="remark" data-ui="${esc(JSON.stringify(ui.remark))}">${esc(ui.remark.button)}</button>
-<button class="am-btn" type="button" data-am="copy" data-done="${esc(ui.done)}">${esc(ui.copy)}</button>
-<button class="am-btn am-btn--copy-image" type="button" data-am="copy-image" data-working="${esc(ui.image.working)}" data-done="${esc(ui.image.done)}" data-failed="${esc(ui.image.failed)}" data-unavailable-browser="${esc(ui.image.unavailableBrowser)}" data-unavailable-clipboard="${esc(ui.image.unavailableClipboard)}" data-unavailable-policy="${esc(ui.image.unavailablePolicy)}" data-unverified-effect="${esc(ui.image.unverifiedEffect)}" aria-label="${esc(ui.image.button)}" title="${esc(ui.image.button)}" hidden>${esc(ui.image.button)}</button>
+<button class="am-btn" type="button" data-am="copy" data-done="${esc(ui.done)}" data-failed="${esc(ui.failed)}">${esc(ui.copy)}</button>
+${exporter.button}
 </div>
-${notice.popover}${colophon2 ? withColophon(body, language) : body}
+${notice.popover}${exporter.menu}${colophon2 ? withColophon(body, language) : body}
 ${lightboxShell(ui, body.includes('class="am-diagram'))}${sourceTag(source)}
 <script>${script}</script>
 </body>
@@ -11166,25 +11765,25 @@ ${lightboxShell(ui, body.includes('class="am-diagram'))}${sourceTag(source)}
 }
 
 // src/theme-market.js
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 
 // src/config.js
-import { readFileSync as readFileSync4, writeFileSync, rmSync, existsSync as existsSync3 } from "node:fs";
-import { join as join3, dirname, isAbsolute as isAbsolute3, resolve as resolve3 } from "node:path";
+import { readFileSync as readFileSync5, writeFileSync, rmSync, existsSync as existsSync3 } from "node:fs";
+import { join as join4, dirname, isAbsolute as isAbsolute4, resolve as resolve3 } from "node:path";
 import { homedir as homedir3 } from "node:os";
 
 // src/home.js
-import { mkdirSync, existsSync as existsSync2, statSync as statSync3, lstatSync, chmodSync } from "node:fs";
+import { mkdirSync, existsSync as existsSync2, statSync as statSync4, lstatSync as lstatSync2, chmodSync } from "node:fs";
 import { homedir as homedir2, tmpdir } from "node:os";
-import { join as join2 } from "node:path";
-var defaultHome = () => join2(homedir2(), ".answer-me-with-html");
+import { join as join3 } from "node:path";
+var defaultHome = () => join3(homedir2(), ".answer-me-with-html");
 function ensureHome(home) {
   const fresh = !existsSync2(home);
   mkdirSync(home, { recursive: true, mode: 448 });
   if (process.platform === "win32" || !(fresh || home === defaultHome())) return;
-  if ((statSync3(home).mode & 511) !== 448) chmodSync(home, 448);
+  if ((statSync4(home).mode & 511) !== 448) chmodSync(home, 448);
 }
-var tempHome = () => join2(tmpdir(), process.getuid ? `answer-me-with-html-${process.getuid()}` : "answer-me-with-html");
+var tempHome = () => join3(tmpdir(), process.getuid ? `answer-me-with-html-${process.getuid()}` : "answer-me-with-html");
 var UnsafeTempHome = class extends Error {
   constructor(dir) {
     super(`${dir} is not a private folder of this user`);
@@ -11203,7 +11802,7 @@ function checkedTempHome({ create = false } = {}) {
   }
   let info;
   try {
-    info = lstatSync(dir);
+    info = lstatSync2(dir);
   } catch (e) {
     if (e.code === "ENOENT" && !create) return null;
     throw e;
@@ -11241,12 +11840,12 @@ function pagesDir(env = process.env, config = {}) {
   const values = config && typeof config === "object" && config.values ? config.values : config;
   const raw = typeof values === "string" ? values : values?.pages_dir ?? "";
   const text2 = String(raw).trim();
-  if (!text2) return join3(amHome(env), "pages");
+  if (!text2) return join4(amHome(env), "pages");
   const expanded = text2.replace(/^~(?=$|[\\/])/, () => homedir3());
-  return isAbsolute3(expanded) ? resolve3(expanded) : resolve3(amHome(env), expanded);
+  return isAbsolute4(expanded) ? resolve3(expanded) : resolve3(amHome(env), expanded);
 }
 function configPath(env = process.env) {
-  return join3(amHome(env), "config.json");
+  return join4(amHome(env), "config.json");
 }
 var defaults = () => Object.fromEntries(Object.entries(CONFIG_KEYS).map(([k, s]) => [k, s.default]));
 function configChoices(key, themes2) {
@@ -11285,7 +11884,7 @@ function readStored(env) {
   const file = configPath(env);
   if (!existsSync3(file)) return { stored: {} };
   try {
-    const data = JSON.parse(readFileSync4(file, "utf8"));
+    const data = JSON.parse(readFileSync5(file, "utf8"));
     return { stored: data && typeof data === "object" && !Array.isArray(data) ? data : {} };
   } catch (e) {
     return { stored: {}, warning: `Cannot parse ${file}; using the default settings (${e.message})` };
@@ -11330,17 +11929,17 @@ function resetConfig(key, env = process.env) {
 
 // src/themes/catalog.js
 import { createHash } from "node:crypto";
-import { mkdirSync as mkdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync7, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join6 } from "node:path";
 
 // src/state.js
-import { readFileSync as readFileSync5, writeFileSync as writeFileSync2, renameSync } from "node:fs";
-import { join as join4 } from "node:path";
+import { readFileSync as readFileSync6, writeFileSync as writeFileSync2, renameSync } from "node:fs";
+import { join as join5 } from "node:path";
 var DAY = 24 * 60 * 60 * 1e3;
-var statePath = (home) => join4(home, "state.json");
+var statePath = (home) => join5(home, "state.json");
 function readState(home) {
   try {
-    const data = JSON.parse(readFileSync5(statePath(home), "utf8"));
+    const data = JSON.parse(readFileSync6(statePath(home), "utf8"));
     return data && typeof data === "object" && !Array.isArray(data) ? data : {};
   } catch {
     return {};
@@ -11377,8 +11976,8 @@ var CatalogError = class extends Error {
   }
 };
 var sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-var themesDir = (home) => join5(home, "themes");
-var themeFile = (home, name2) => join5(themesDir(home), `${name2}.json`);
+var themesDir = (home) => join6(home, "themes");
+var themeFile = (home, name2) => join6(themesDir(home), `${name2}.json`);
 function catalogUrl(env = process.env) {
   const url = env.AM_CATALOG_URL || CATALOG.url;
   let parsed;
@@ -11508,7 +12107,7 @@ function forget(home, name2) {
 }
 function readInstalledFile(home, name2) {
   try {
-    return readFileSync6(themeFile(home, name2));
+    return readFileSync7(themeFile(home, name2));
   } catch {
     return null;
   }
@@ -11720,7 +12319,7 @@ function removeTheme(name2, { print, fail, env }) {
   }
   const wasDefault = readConfig(env, loadThemes(home)).stored.theme === name2;
   remove(home, name2);
-  print(`\u2713 Removed ${join6(themesDir(home), `${name2}.json`)}`);
+  print(`\u2713 Removed ${join7(themesDir(home), `${name2}.json`)}`);
   if (wasDefault) {
     resetConfig("theme", env);
     print(`! ${name2} was the default theme; the default is auto again`);
@@ -11852,9 +12451,9 @@ var round3 = (x2) => Math.round(x2 * 1e3) / 1e3;
 // src/video/tts.js
 import { spawn, spawnSync as spawnSync2 } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
-import { mkdirSync as mkdirSync3, readFileSync as readFileSync7, writeFileSync as writeFileSync4, existsSync as existsSync4, rmSync as rmSync3, mkdtempSync, renameSync as renameSync4, statSync as statSync4 } from "node:fs";
+import { mkdirSync as mkdirSync3, readFileSync as readFileSync8, writeFileSync as writeFileSync4, existsSync as existsSync4, rmSync as rmSync3, mkdtempSync, renameSync as renameSync4, statSync as statSync5 } from "node:fs";
 import { tmpdir as tmpdir2 } from "node:os";
-import { dirname as dirname2, join as join7, resolve as resolve4 } from "node:path";
+import { dirname as dirname2, join as join8, resolve as resolve4 } from "node:path";
 
 // src/sys.js
 import { spawnSync } from "node:child_process";
@@ -12026,7 +12625,7 @@ function commandVoice(env, { which, timeoutMs }) {
       await runCommandTts(program, args, text2, timeoutMs);
       let buf;
       try {
-        buf = readFileSync7(out);
+        buf = readFileSync8(out);
       } catch {
         buf = Buffer.alloc(0);
       }
@@ -12092,8 +12691,8 @@ function audioMapProvider(mapPath, { which = hasCommand, runCommand = run } = {}
   let source;
   let mapStat;
   try {
-    source = readFileSync7(mapFile, "utf8").replace(/^\uFEFF/, "");
-    mapStat = statSync4(mapFile);
+    source = readFileSync8(mapFile, "utf8").replace(/^\uFEFF/, "");
+    mapStat = statSync5(mapFile);
   } catch (e) {
     throw new TtsError(`Cannot read audio map ${mapFile}: ${e.message}`);
   }
@@ -12117,9 +12716,9 @@ function audioMapProvider(mapPath, { which = hasCommand, runCommand = run } = {}
     let stat2;
     let audio;
     try {
-      stat2 = statSync4(audioFile);
+      stat2 = statSync5(audioFile);
       if (!stat2.isFile()) throw new TtsError(`Audio file for narration line "${text2}" is not a file: ${audioFile}`);
-      audio = readFileSync7(audioFile);
+      audio = readFileSync8(audioFile);
     } catch (e) {
       if (e instanceof TtsError) throw e;
       throw new TtsError(`Cannot read audio file for narration line "${text2}": ${audioFile}: ${e.message}`);
@@ -12141,7 +12740,7 @@ function audioMapProvider(mapPath, { which = hasCommand, runCommand = run } = {}
       if (!entry) throw new TtsError(`No audio map entry for narration line "${key}"`);
       let buf;
       try {
-        buf = readFileSync7(entry.file);
+        buf = readFileSync8(entry.file);
       } catch (e) {
         throw new TtsError(`Cannot read audio file for narration line "${key}": ${entry.file}: ${e.message}`);
       }
@@ -12165,7 +12764,7 @@ async function mappedSamples(buf, file, label, { which, runCommand }) {
   return withTemp(async (out) => {
     try {
       await runCommand("ffmpeg", ["-v", "error", "-y", "-i", file, "-ac", "1", "-ar", String(SAMPLE_RATE), "-c:a", "pcm_s16le", out]);
-      return readWav(readFileSync7(out));
+      return readWav(readFileSync8(out));
     } catch (e) {
       throw new TtsError(`Cannot convert ${label} with ffmpeg: ${e.message}`);
     }
@@ -12223,7 +12822,7 @@ function systemVoice(platform, which) {
       // A caller that does not say which language a line is in (languageOf is optional) gets the system default voice.
       synth: (text2, { voice } = {}) => withTemp(async (file) => {
         await run("say", [...voice ? ["-v", voice] : [], "-o", file, "--file-format=WAVE", `--data-format=LEI16@${SAMPLE_RATE}`, "-f", textFile(file, text2)]);
-        return readWav(readFileSync7(file));
+        return readWav(readFileSync8(file));
       })
     };
   }
@@ -12239,7 +12838,7 @@ function systemVoice(platform, which) {
       // A caller that does not say which language a line is in gets the English voice, which every espeak-ng build has.
       synth: (text2, { voice } = {}) => withTemp(async (file) => {
         await run("espeak-ng", ["-v", voice ?? "en-us", "-w", file, "-f", textFile(file, text2)]);
-        return readWav(readFileSync7(file));
+        return readWav(readFileSync8(file));
       })
     };
   }
@@ -12310,9 +12909,9 @@ function textFile(wavFile, text2) {
   return p;
 }
 async function withTemp(fn2) {
-  const dir = mkdtempSync(join7(tmpdir2(), "am-tts-"));
+  const dir = mkdtempSync(join8(tmpdir2(), "am-tts-"));
   try {
-    return await fn2(join7(dir, "out.wav"));
+    return await fn2(join8(dir, "out.wav"));
   } finally {
     rmSync3(dir, { recursive: true, force: true });
   }
@@ -12374,7 +12973,7 @@ async function synthAll(texts, provider, { cacheDir: wanted, languageOf } = {}) 
       const key = `${provider.id}${voice ? `:${voice}` : ""}${language ? `
 ${language}` : ""}
 ${texts[i]}`;
-      const file = cacheDir && join7(cacheDir, `${createHash2("sha1").update(key).digest("hex")}.pcm`);
+      const file = cacheDir && join8(cacheDir, `${createHash2("sha1").update(key).digest("hex")}.pcm`);
       const cached = file && readCache(file);
       if (cached) {
         results[i] = cached;
@@ -12400,7 +12999,7 @@ function readCache(file) {
   if (!existsSync4(file)) return null;
   let buf;
   try {
-    buf = readFileSync7(file);
+    buf = readFileSync8(file);
   } catch (e) {
     if (!isDenied(e)) throw e;
     return null;
@@ -12547,7 +13146,7 @@ function scene(s, i, total, body, ui) {
 </section>`;
 }
 function sheetFrame() {
-  const ruler2 = (side, labels) => `<div class="amv-ruler amv-ruler--${side}">${labels.map((l3) => `<span>${l3}</span>`).join("")}</div>`;
+  const ruler2 = (side, labels2) => `<div class="amv-ruler amv-ruler--${side}">${labels2.map((l3) => `<span>${l3}</span>`).join("")}</div>`;
   const nums = [1, 2, 3, 4, 5, 6, 7, 8];
   const letters = ["A", "B", "C", "D"];
   return `<div class="amv-sheet" aria-hidden="true">${ruler2("top", nums)}${ruler2("bottom", nums)}${ruler2("left", letters)}${ruler2("right", letters)}</div>`;
@@ -12608,14 +13207,14 @@ ${sourceTag(source)}
 // src/video/export.js
 import { spawn as spawn3 } from "node:child_process";
 import { writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/chrome.js
 import { spawn as spawn2 } from "node:child_process";
 import { existsSync as existsSync5, mkdtempSync as mkdtempSync2, rmSync as rmSync4 } from "node:fs";
 import { tmpdir as tmpdir3 } from "node:os";
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var ExportError = class extends Error {
 };
 var CDP_TIMEOUT_MS = 3e4;
@@ -12656,11 +13255,11 @@ async function openPage(url, {
   scriptError = "Page script error"
 } = {}) {
   if (!chromePath) throw new ExportError("No Chrome / Chromium / Edge found. Set the browser path with the AM_CHROME environment variable");
-  const tmp = mkdtempSync2(join8(tmpdir3(), "am-chrome-"));
+  const tmp = mkdtempSync2(join9(tmpdir3(), "am-chrome-"));
   const chrome = spawn2(chromePath, [
     "--headless=new",
     "--remote-debugging-port=0",
-    `--user-data-dir=${join8(tmp, "profile")}`,
+    `--user-data-dir=${join9(tmp, "profile")}`,
     "--no-first-run",
     "--no-default-browser-check",
     "--hide-scrollbars",
@@ -12819,7 +13418,7 @@ async function exportMp4(htmlFile, mp4File, { wav: wav2, env = process.env, onPr
   const player = await openPlayer(htmlFile, { env, startTimeoutMs });
   try {
     const { info, evaluate, screenshot, tmp } = player;
-    const wavFile = wav2 ? join9(tmp, "voice.wav") : null;
+    const wavFile = wav2 ? join10(tmp, "voice.wav") : null;
     if (wav2) writeFileSync5(wavFile, wav2);
     const ffmpeg = spawn3("ffmpeg", [
       "-y",
@@ -12918,18 +13517,19 @@ async function exportWebm(htmlFile, webmFile, { env = process.env, onProgress = 
 }
 
 // src/export.js
-import { existsSync as existsSync6, lstatSync as lstatSync2, mkdirSync as mkdirSync4, readdirSync as readdirSync2, readlinkSync, realpathSync as realpathSync3, statSync as statSync5, unlinkSync, writeFileSync as writeFileSync6 } from "node:fs";
-import { basename as basename3, dirname as dirname3, join as join10, resolve as resolve5 } from "node:path";
+import { existsSync as existsSync6, lstatSync as lstatSync3, mkdirSync as mkdirSync4, readdirSync as readdirSync2, readlinkSync, realpathSync as realpathSync4, statSync as statSync6, unlinkSync, writeFileSync as writeFileSync6 } from "node:fs";
+import { basename as basename3, dirname as dirname3, join as join11, resolve as resolve5 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 var VIEWPORT = 1200;
 var DEVICE_SCALE = 2;
 var MAX_SLICE = 1800;
 var SETTLE_MS = 400;
 var CHROME_CSS = `.am-toolbar, .am-reply, .am-reply-bar, .am-comment, .am-comment-btn, .am-remark-pop,
-.am-update, .am-btn--update, .am-btn--copy-image, .am-lightbox, .am-code-copy, .am-diagram-expand, .am-toc, .am-delta-switch, .am-table-controls {
+.am-update, .am-btn--update, .am-btn--export, .am-export, .am-lightbox, .am-code-copy, .am-diagram-expand, .am-toc, .am-delta-switch, .am-table-controls {
   display: none !important;
 }
-.am-table-sort::after { content: none !important; }`;
+.am-table-sort::after { content: none !important; }
+.am-head::before { display: none !important; }`;
 function slicePoints(pageHeight, boxes = [], maxHeight = MAX_SLICE) {
   const limit = Math.floor(maxHeight);
   if (!(limit > 0)) throw new RangeError("maxHeight must be greater than 0");
@@ -12963,7 +13563,7 @@ async function exportPage(file, { pdf, png, env = process.env, onFile = () => {
   if (pdf && png && sameDirectory(dirname3(pdf), png) && isSliceOf(basename3(pdf), sliceName(file))) {
     throw new ExportError(`The PDF ${pdf} has the name of a PNG slice in ${png}: choose another file name`);
   }
-  if (pdf && png && lstatSync2(pdf, { throwIfNoEntry: false })?.isSymbolicLink()) {
+  if (pdf && png && lstatSync3(pdf, { throwIfNoEntry: false })?.isSymbolicLink()) {
     const target = resolve5(dirname3(pdf), readlinkSync(pdf));
     if (sameDirectory(dirname3(target), png) && isSliceOf(basename3(target), sliceName(file))) {
       throw new ExportError(`The PDF ${pdf} has the name of a PNG slice in ${png}: choose another file name`);
@@ -12978,7 +13578,7 @@ async function exportPage(file, { pdf, png, env = process.env, onFile = () => {
   }
   let inputStat;
   try {
-    inputStat = statSync5(file);
+    inputStat = statSync6(file);
   } catch (e) {
     throw new ExportError(`Cannot read the page ${file}: ${e.message}`);
   }
@@ -13011,7 +13611,7 @@ async function exportPage(file, { pdf, png, env = process.env, onFile = () => {
 function checkPdfCollision(file, pdf, png) {
   let entries;
   try {
-    entries = statSync5(png, { throwIfNoEntry: false })?.isDirectory() ? readdirSync2(png) : [];
+    entries = statSync6(png, { throwIfNoEntry: false })?.isDirectory() ? readdirSync2(png) : [];
   } catch (e) {
     throw new ExportError(`Cannot check the PNG folder ${png} for a PDF collision: ${e.message}`);
   }
@@ -13020,7 +13620,7 @@ function checkPdfCollision(file, pdf, png) {
     const index = entry.match(/-([1-9]\d*)\.png$/i)?.[1];
     if (!index || checked.has(index)) continue;
     checked.add(index);
-    const slice = join10(png, `${sliceName(file)}-${index}.png`);
+    const slice = join11(png, `${sliceName(file)}-${index}.png`);
     if (existsSync6(slice) && sameFile(slice, pdf)) {
       throw new ExportError(`The PDF ${pdf} has the name of a PNG slice in ${png}: choose another file name`);
     }
@@ -13048,10 +13648,12 @@ async function writePdf(page, file) {
   return file;
 }
 async function writePngSlices(page, htmlFile, folder, onWarn = () => {
-}, inputStat = statSync5(htmlFile)) {
+}, inputStat = statSync6(htmlFile)) {
   await page.page("Emulation.setEmulatedMedia", { media: "screen" });
   await settle2(page);
   const layout5 = await page.evaluate(`(async () => {
+    // A steps block in a picture shows its numbers and its list, not the bar and the boxes of a reader's selection.
+    for (const el of document.querySelectorAll('.am-steps--live')) el.classList.remove('am-steps--live');
     await document.fonts.ready;
     await new Promise((r) => setTimeout(r, ${SETTLE_MS}));
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -13073,7 +13675,7 @@ async function writePngSlices(page, htmlFile, folder, onWarn = () => {
   if (layout5.empty) throw new ExportError("The page is empty: there is nothing to export");
   try {
     mkdirSync4(folder, { recursive: true });
-    if (!statSync5(folder).isDirectory()) throw new Error("not a folder");
+    if (!statSync6(folder).isDirectory()) throw new Error("not a folder");
   } catch (e) {
     throw new ExportError(`Cannot use the PNG folder ${folder}: ${e.message}`);
   }
@@ -13091,7 +13693,7 @@ async function writePngSlices(page, htmlFile, folder, onWarn = () => {
       captureBeyondViewport: true,
       clip: { x: 0, y: top2, width: VIEWPORT, height, scale: 1 }
     });
-    const file = join10(folder, `${name2}-${i}.png`);
+    const file = join11(folder, `${name2}-${i}.png`);
     if (isInputFile(file, htmlFile, inputStat)) throw new ExportError(`The PNG ${file} is the input page: choose another folder`);
     try {
       writeFileSync6(file, Buffer.from(data, "base64"));
@@ -13104,7 +13706,7 @@ async function writePngSlices(page, htmlFile, folder, onWarn = () => {
   return written;
 }
 function removeStaleSlices(folder, name2, kept, htmlFile, onWarn = () => {
-}, inputStat = statSync5(htmlFile, { throwIfNoEntry: false })) {
+}, inputStat = statSync6(htmlFile, { throwIfNoEntry: false })) {
   let entries;
   try {
     entries = readdirSync2(folder);
@@ -13114,9 +13716,9 @@ function removeStaleSlices(folder, name2, kept, htmlFile, onWarn = () => {
   }
   for (const entry of entries) {
     if (!isSliceOf(entry, name2) || kept.has(entry)) continue;
-    const file = join10(folder, entry);
+    const file = join11(folder, entry);
     try {
-      const st3 = lstatSync2(file);
+      const st3 = lstatSync3(file);
       if (!st3.isFile() && !st3.isSymbolicLink()) {
         onWarn(`Left ${file} in place: it is not a PNG file`);
         continue;
@@ -13138,7 +13740,7 @@ var settle2 = (page) => page.evaluate(`(async () => {
   return true;
 })()`);
 function isHtmlPage(file) {
-  return /\.html?$/i.test(file) && statSync5(file, { throwIfNoEntry: false })?.isFile() === true;
+  return /\.html?$/i.test(file) && statSync6(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 var sliceName = (htmlFile) => basename3(htmlFile).replace(/\.html?$/i, "") || "page";
 var isSliceOf = (fileName, name2) => {
@@ -13146,13 +13748,13 @@ var isSliceOf = (fileName, name2) => {
   return /^[1-9]\d*$/.test(fileName.slice(name2.length + 1, -".png".length));
 };
 var sameFile = (a, b) => {
-  return sameIdentity(statSync5(a), statSync5(b));
+  return sameIdentity(statSync6(a), statSync6(b));
 };
 var sameIdentity = (a, b) => a.dev === b.dev && a.ino === b.ino;
 var isInputFile = (file, htmlFile, inputStat) => {
   if (!existsSync6(file)) return false;
-  const st3 = statSync5(file);
-  return inputStat && sameIdentity(st3, inputStat) || existsSync6(htmlFile) && sameIdentity(st3, statSync5(htmlFile));
+  const st3 = statSync6(file);
+  return inputStat && sameIdentity(st3, inputStat) || existsSync6(htmlFile) && sameIdentity(st3, statSync6(htmlFile));
 };
 var realOrAncestor = (path) => {
   const missing = [];
@@ -13161,14 +13763,14 @@ var realOrAncestor = (path) => {
     missing.unshift(basename3(current));
     current = dirname3(current);
   }
-  return join10(realpathSync3(current), ...missing);
+  return join11(realpathSync4(current), ...missing);
 };
 var sameDirectory = (a, b) => {
   if (resolve5(a) === resolve5(b)) return true;
   try {
     if (realOrAncestor(a) === realOrAncestor(b)) return true;
-    const x2 = statSync5(a);
-    const y2 = statSync5(b);
+    const x2 = statSync6(a);
+    const y2 = statSync6(b);
     return x2.dev === y2.dev && x2.ino === y2.ino;
   } catch {
     return false;
@@ -13177,8 +13779,8 @@ var sameDirectory = (a, b) => {
 var isPath = (value) => value.includes("/") || value.includes("\\");
 
 // src/housekeeping.js
-import { readdirSync as readdirSync3, lstatSync as lstatSync3, rmSync as rmSync5, readFileSync as readFileSync8 } from "node:fs";
-import { join as join11, basename as basename4, resolve as resolve6, relative as relative2, isAbsolute as isAbsolute4, sep as sep3 } from "node:path";
+import { readdirSync as readdirSync3, lstatSync as lstatSync4, rmSync as rmSync5, readFileSync as readFileSync9 } from "node:fs";
+import { join as join12, basename as basename4, resolve as resolve6, relative as relative3, isAbsolute as isAbsolute5, sep as sep4 } from "node:path";
 
 // src/update.js
 import { spawn as spawn4 } from "node:child_process";
@@ -13291,16 +13893,16 @@ var PAGE_FILE = /^[a-z0-9-]+-\d{8}-\d{6}(-\d+)?\.html$/;
 function walk(dir) {
   let entries;
   try {
-    if (!lstatSync3(dir).isDirectory()) return [];
+    if (!lstatSync4(dir).isDirectory()) return [];
     entries = readdirSync3(dir, { withFileTypes: true });
   } catch {
     return [];
   }
   return entries.flatMap((e) => {
-    const p = join11(dir, e.name);
+    const p = join12(dir, e.name);
     if (e.isDirectory()) return walk(p);
     try {
-      const s = lstatSync3(p);
+      const s = lstatSync4(p);
       return s.isFile() ? [{ path: p, bytes: s.size, mtime: s.mtimeMs }] : [];
     } catch {
       return [];
@@ -13309,18 +13911,18 @@ function walk(dir) {
 }
 var sum = (files) => files.reduce((n, f2) => n + f2.bytes, 0);
 var insideDir = (dir, path) => {
-  const rel = relative2(resolve6(dir), resolve6(path));
-  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep3}`) && !isAbsolute4(rel);
+  const rel = relative3(resolve6(dir), resolve6(path));
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep4}`) && !isAbsolute5(rel);
 };
 var DATA_DIRS = ["videos", "drafts", "cache", "serve-state", "themes"];
-var samePath = (a, b) => relative2(resolve6(a), resolve6(b)) === "";
+var samePath = (a, b) => relative3(resolve6(a), resolve6(b)) === "";
 var outsidePages = (root, pages) => insideDir(root, pages) || samePath(root, pages) ? (f2) => !insideDir(pages, f2.path) : () => true;
 var pageFiles = (home, pages) => {
-  const nested = DATA_DIRS.map((d) => join11(home, d)).filter((root) => insideDir(pages, root));
+  const nested = DATA_DIRS.map((d) => join12(home, d)).filter((root) => insideDir(pages, root));
   return walk(pages).filter((f2) => !nested.some((root) => insideDir(root, f2.path)));
 };
-function usage2(home, pages = join11(home, "pages")) {
-  const roots = { pages, videos: join11(home, "videos"), cache: join11(home, "cache") };
+function usage2(home, pages = join12(home, "pages")) {
+  const roots = { pages, videos: join12(home, "videos"), cache: join12(home, "cache") };
   const parts = Object.fromEntries(DIRS4.map((d) => {
     const files = d === "pages" ? pageFiles(home, pages) : walk(roots[d]).filter(outsidePages(roots[d], pages));
     return [d, { count: files.length, bytes: sum(files) }];
@@ -13328,22 +13930,22 @@ function usage2(home, pages = join11(home, "pages")) {
   return { ...parts, total: DIRS4.reduce((n, d) => n + parts[d].bytes, 0) };
 }
 var pageVictims = (home, pages, cutoff, all, custom) => pageFiles(home, pages).filter((f2) => (all || f2.mtime < cutoff) && (!custom || PAGE_FILE.test(basename4(f2.path))));
-function clean2(home, { days = CLEAN.days, all = false, dryRun = false, now = Date.now(), temp, pages = join11(home, "pages") } = {}) {
+function clean2(home, { days = CLEAN.days, all = false, dryRun = false, now = Date.now(), temp, pages = join12(home, "pages") } = {}) {
   const cutoff = now - days * DAY;
-  const custom = resolve6(pages) !== resolve6(join11(home, "pages"));
+  const custom = resolve6(pages) !== resolve6(join12(home, "pages"));
   const victims = [
     ...pageVictims(home, pages, cutoff, all, custom),
-    ...["videos", "drafts"].flatMap((d) => walk(join11(home, d)).filter((f2) => outsidePages(join11(home, d), pages)(f2) && (all || f2.mtime < cutoff))),
-    ...[temp].filter(Boolean).flatMap((dir) => ["pages", "videos", "drafts"].flatMap((d) => walk(join11(dir, d)).filter((f2) => all || f2.mtime < cutoff))),
-    ...walk(join11(home, "cache")).filter(outsidePages(join11(home, "cache"), pages))
+    ...["videos", "drafts"].flatMap((d) => walk(join12(home, d)).filter((f2) => outsidePages(join12(home, d), pages)(f2) && (all || f2.mtime < cutoff))),
+    ...[temp].filter(Boolean).flatMap((dir) => ["pages", "videos", "drafts"].flatMap((d) => walk(join12(dir, d)).filter((f2) => all || f2.mtime < cutoff))),
+    ...walk(join12(home, "cache")).filter(outsidePages(join12(home, "cache"), pages))
   ];
   const gone = new Set(pageVictims(home, pages, cutoff, all, custom).map((f2) => f2.path));
-  const states = walk(join11(home, "serve-state")).filter(outsidePages(join11(home, "serve-state"), pages)).filter((f2) => {
+  const states = walk(join12(home, "serve-state")).filter(outsidePages(join12(home, "serve-state"), pages)).filter((f2) => {
     if (!f2.path.endsWith(".json")) return f2.mtime < now - HOUR;
     if (all || f2.mtime < cutoff) return true;
     try {
-      const file = JSON.parse(readFileSync8(f2.path, "utf8"))?.file;
-      return typeof file !== "string" || gone.has(join11(pages, file)) || !lstatSync3(join11(pages, file)).isFile();
+      const file = JSON.parse(readFileSync9(f2.path, "utf8"))?.file;
+      return typeof file !== "string" || gone.has(join12(pages, file)) || !lstatSync4(join12(pages, file)).isFile();
     } catch {
       return true;
     }
@@ -13367,7 +13969,7 @@ function cleanHint(state, use, now = Date.now()) {
   const when = state.lastClean ? `last cleaned ${days} days ago` : "never cleaned";
   return `! Cleanup hint: the data directory uses ${mb(use.total)} (${parts}), ${when}. Ask the user whether to run am clean (deletes pages, videos and drafts older than ${CLEAN.days} days and empties the voice-over cache; am clean --all deletes everything).`;
 }
-function afterRender({ home, env, config, current, scriptPath, background, now = Date.now(), pages = join11(home, "pages") }) {
+function afterRender({ home, env, config, current, scriptPath, background, now = Date.now(), pages = join12(home, "pages") }) {
   let state = readState(home);
   if (!state.firstSeen) state = writeState(home, { firstSeen: now });
   const hints = [];
@@ -13452,9 +14054,9 @@ import { connect as connect2, isIP } from "node:net";
 import { spawnSync as spawnSync3 } from "node:child_process";
 import { networkInterfaces, uptime } from "node:os";
 import { createHmac, createHash as createHash3, randomBytes, timingSafeEqual } from "node:crypto";
-import { readFileSync as readFileSync9, writeFileSync as writeFileSync7, renameSync as renameSync5, rmSync as rmSync6, mkdirSync as mkdirSync5, watch, lstatSync as lstatSync4, existsSync as existsSync7, openSync, fstatSync, closeSync, linkSync, constants as fsConstants } from "node:fs";
+import { readFileSync as readFileSync10, writeFileSync as writeFileSync7, renameSync as renameSync5, rmSync as rmSync6, mkdirSync as mkdirSync5, watch, lstatSync as lstatSync5, existsSync as existsSync7, openSync, fstatSync, closeSync, linkSync, constants as fsConstants } from "node:fs";
 import { lstat, realpath, readFile, stat } from "node:fs/promises";
-import { join as join12, resolve as resolve7, dirname as dirname4, basename as basename5, sep as sep4 } from "node:path";
+import { join as join13, resolve as resolve7, dirname as dirname4, basename as basename5, sep as sep5 } from "node:path";
 var DEFAULT_PORT = 8765;
 var HOST = "127.0.0.1";
 var LAN_BIND = "0.0.0.0";
@@ -13549,7 +14151,7 @@ var SECRET_PATTERN = /^[0-9a-f]{64}$/;
 function loadSecret(secretFile) {
   if (secretFile === void 0) return randomBytes(32).toString("hex");
   try {
-    if (fsConstants.O_NOFOLLOW === void 0 && lstatSync4(secretFile).isSymbolicLink()) {
+    if (fsConstants.O_NOFOLLOW === void 0 && lstatSync5(secretFile).isSymbolicLink()) {
       throw new ServeError("--secret-file must not be a symbolic link");
     }
     const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0);
@@ -13558,7 +14160,7 @@ function loadSecret(secretFile) {
       const mode = fstatSync(fd);
       if (!mode.isFile()) throw new ServeError("--secret-file must be a regular file");
       if (process.platform !== "win32" && mode.mode & 36) throw new ServeError("--secret-file must not be readable by group or others");
-      const secret = readFileSync9(fd, "utf8");
+      const secret = readFileSync10(fd, "utf8");
       if (!SECRET_PATTERN.test(secret)) throw new ServeError("--secret-file must contain exactly 64 lowercase hex characters");
       return secret;
     } finally {
@@ -13586,7 +14188,7 @@ function loadSecret(secretFile) {
     }
   }
 }
-var infoPath = (home) => join12(home, "serve.json");
+var infoPath = (home) => join13(home, "serve.json");
 function pageToken(secret, dir, file) {
   return createHmac("sha256", secret).update(`${dir}/${file}`).digest("base64url").slice(0, TOKEN_LENGTH);
 }
@@ -13618,7 +14220,7 @@ var BOOT_SLACK_MS = 5e3;
 var bootedBefore = (startedAt) => startedAt < Date.now() - uptime() * 1e3 - BOOT_SLACK_MS;
 function readServeInfo(home) {
   try {
-    const info = JSON.parse(readFileSync9(infoPath(home), "utf8"));
+    const info = JSON.parse(readFileSync10(infoPath(home), "utf8"));
     const validBase = info?.baseUrl === void 0 || typeof info.baseUrl === "string" && publicUrlOrigin(info.baseUrl) === info.baseUrl;
     const ok = info && Number.isInteger(info.port) && typeof info.secret === "string" && info.secret.length > 0 && Number.isFinite(info.startedAt) && !bootedBefore(info.startedAt) && alive(info.pid) && validBase;
     const host = isIP(info.host) ? info.host : void 0;
@@ -13653,7 +14255,7 @@ function writeInfo(home, info) {
 }
 function removeInfo(home, secret, port) {
   try {
-    const info = JSON.parse(readFileSync9(infoPath(home), "utf8"));
+    const info = JSON.parse(readFileSync10(infoPath(home), "utf8"));
     if (info.secret === secret && info.port === port) rmSync6(infoPath(home), { force: true });
   } catch {
   }
@@ -13674,17 +14276,17 @@ async function pageVersion(home, file, pages = resolve7(home, "pages")) {
     return null;
   }
 }
-var stateFile = (home, token) => join12(home, STATE_DIR, `${createHash3("sha256").update(token).digest("hex")}.json`);
+var stateFile = (home, token) => join13(home, STATE_DIR, `${createHash3("sha256").update(token).digest("hex")}.json`);
 function readState2(home, token) {
   try {
-    const record2 = JSON.parse(readFileSync9(stateFile(home, token), "utf8"));
+    const record2 = JSON.parse(readFileSync10(stateFile(home, token), "utf8"));
     return record2 && typeof record2 === "object" ? record2 : null;
   } catch {
     return null;
   }
 }
 function writeState2(home, token, record2) {
-  const dir = join12(home, STATE_DIR);
+  const dir = join13(home, STATE_DIR);
   mkdirSync5(dir, { recursive: true, mode: 448 });
   const path = stateFile(home, token);
   const tmp = `${path}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;
@@ -13761,11 +14363,11 @@ async function saveState(req, res, home, secret, file, token, version) {
 }
 async function resolvePage(home, dir, file, pages = resolve7(home, "pages")) {
   try {
-    const root = await realpath(dir === "pages" ? pages : join12(home, dir));
-    const path = join12(root, file);
+    const root = await realpath(dir === "pages" ? pages : join13(home, dir));
+    const path = join13(root, file);
     if (!(await lstat(path)).isFile()) return null;
     const real = await realpath(path);
-    return real.startsWith(root + sep4) ? real : null;
+    return real.startsWith(root + sep5) ? real : null;
   } catch {
     return null;
   }
@@ -13957,7 +14559,7 @@ async function startServer({ home, port = DEFAULT_PORT, lan = false, publicUrl, 
   const running = readServeInfo(home);
   if (running && await listening(running.port, running.host)) throw new ServeError(`am serve is already running on ${running.baseUrl ?? `http://${HOST}:${running.port}`} (pid ${running.pid}); stop it first`);
   if (tail && !secretFile) ensureHome(home);
-  const secret = loadSecret(secretFile ?? (tail ? join12(home, "serve-secret") : void 0));
+  const secret = loadSecret(secretFile ?? (tail ? join13(home, "serve-secret") : void 0));
   const live = liveStreams(home, pagesDir2);
   const server = createServer(handler(home, secret, allowedHosts, live, pagesDir2));
   await new Promise((done, fail) => {
@@ -13984,7 +14586,7 @@ async function startServer({ home, port = DEFAULT_PORT, lan = false, publicUrl, 
     });
     return closed;
   };
-  return { port: actual, secret, close, baseUrl, addresses, lan, tailscale: !!tail, secretPath: tail && !secretFile ? join12(home, "serve-secret") : secretFile };
+  return { port: actual, secret, close, baseUrl, addresses, lan, tailscale: !!tail, secretPath: tail && !secretFile ? join13(home, "serve-secret") : secretFile };
 }
 async function runServe({ home, port, lan = false, publicUrl, secretFile, tailscale = false, pagesDir: pagesDir2, print, fail }) {
   let srv;
@@ -14046,7 +14648,7 @@ Usage:
 - A file argument of - reads from stdin (good for heredoc: am render - <<'EOF' ... EOF).
 - -o names an output file, for example -o page.html; it does not name a folder.
 - Output goes to ~/.answer-me-with-html/pages/ by default (change it with the AM_HOME environment variable).
-- A page with STE or code warnings does not open. Fix the draft and render again with --replace <page>: the earlier page is deleted once the new one is written.
+- A page with STE, code or ref warnings does not open. Fix the draft and render again with --replace <page>: the earlier page is deleted once the new one is written.
 - Set auto-open, the default theme and more with am config; --open / --no-open apply to this run only.
 - am patch reads the source draft from the page's hidden #am-source, changes only the ## section that --panel names, and writes the page back to the same path.`;
 var FORMAT = `Draft format (extended Markdown)
@@ -14115,6 +14717,10 @@ export const LIMIT = 50
 - 10 to ${LONG_CODE_LINES} lines make the point best: a longer block gets a warning, and more than ${MAX_CODE_LINES} lines is an error.
 - Files that hold keys by convention (.env, *.pem, id_rsa, .ssh/, .git/ \u2026) and files with anything that looks like a key or a token are refused.
 - The render lists every embedded file. The page keeps the path; am patch reads the file again, or keeps the page's copy when the file has moved.
+- In the text, a code span that is only a path and a line (\`src/cli.js:42\` or \`src/cli.js:18-30\`) cites the file (also in tree, timeline, kv and ask text;
+  diagram text is not checked). The render checks it against the same
+  folder and prints a refs warning when the file is missing, the lines go past its end, or the range runs backwards; the page then does not open.
+  A missing path is a warning only when its first folder exists here, so a path of another project is not checked.
 
 Diff blocks: show a change
 
@@ -14294,7 +14900,7 @@ async function withSource(arg, io, fail, fn2) {
   const cwd = io.cwd ?? process.cwd();
   let src;
   try {
-    src = arg === "-" ? await readStream(io.stdin ?? process.stdin) : readFileSync10(resolve8(cwd, arg), "utf8");
+    src = arg === "-" ? await readStream(io.stdin ?? process.stdin) : readFileSync11(resolve8(cwd, arg), "utf8");
   } catch (e) {
     fail(`\u2717 Cannot read the draft: ${e.message}`);
     return 2;
@@ -14327,7 +14933,7 @@ async function cmdRender(src, opts, ctx, baseDir, from) {
   const pages = pagesDir(ctx.env, config);
   const replaced = opts.replace === void 0 ? null : pagePath(opts.replace, ctx, pages);
   if (replaced === false) {
-    fail(`\u2717 --replace takes a page that am render wrote (a .html file in ${pages} or ${join13(tempHome(), "pages")})`);
+    fail(`\u2717 --replace takes a page that am render wrote (a .html file in ${pages} or ${join14(tempHome(), "pages")})`);
     return 2;
   }
   const { theme, mode, style } = config.values;
@@ -14340,7 +14946,7 @@ async function cmdRender(src, opts, ctx, baseDir, from) {
   }
   const file = outputPath("pages", nameSource(result.meta), opts, ctx, pages);
   if (!file) return 2;
-  const written = emit(result, file, ctx, { fallback: opts.out ? void 0 : "pages", pages });
+  const written = emit(result, file, ctx, { fallback: opts.out ? void 0 : "pages", pages, modeFrom: replaced });
   if (!written) return 1;
   if (opts.out && !extname3(file)) print("! -o names a file without an extension; use .html for an HTML page");
   if (replaced && replaced !== resolve8(written)) removeEarlier(replaced, ctx);
@@ -14351,7 +14957,7 @@ async function cmdRender(src, opts, ctx, baseDir, from) {
 }
 var updateFor = (config, { env, io }) => pageUpdate(readState(amHome(env)), VERSION, io.scriptPath, env, config.values);
 var hasWarnings = (result) => hasRetryWarnings(result) || (result.stats.componentWarnings ?? []).length > 0 || (result.stats.htmlWarnings ?? []).length > 0;
-var draftsDir = (home) => join13(resolve8(home), "drafts");
+var draftsDir = (home) => join14(resolve8(home), "drafts");
 function draftTitle(src) {
   const m = src.match(/^title:\s*["']?(.+?)["']?\s*$/m) ?? src.match(/^#\s+(.+)$/m);
   return m?.[1] ?? "";
@@ -14381,7 +14987,7 @@ function saveDraft(src, { env, io }) {
 }
 function writeNew(dir, name2, text2) {
   for (let n = 1; ; n++) {
-    const file = join13(dir, n === 1 ? name2 : name2.replace(/\.md$/, `-${n}.md`));
+    const file = join14(dir, n === 1 ? name2 : name2.replace(/\.md$/, `-${n}.md`));
     try {
       writeFileSync8(file, text2, { flag: "wx" });
       return file;
@@ -14415,8 +15021,8 @@ function reportDraftError(e, src, from, ctx) {
   }
   return code;
 }
-var hasRetryWarnings = (result) => result.warnings.length > 0 || (result.stats.codeWarnings ?? []).length > 0 || (result.stats.mathWarnings ?? []).length > 0;
-function pagePath(arg, { env, io }, pages = join13(amHome(env), "pages")) {
+var hasRetryWarnings = (result) => result.warnings.length > 0 || (result.stats.codeWarnings ?? []).length > 0 || (result.stats.refWarnings ?? []).length > 0 || (result.stats.mathWarnings ?? []).length > 0;
+function pagePath(arg, { env, io }, pages = join14(amHome(env), "pages")) {
   const path = resolve8(io.cwd ?? process.cwd(), arg);
   const folders = [resolve8(pages), resolve8(tempHome(), "pages")];
   return folders.includes(dirname5(path)) && basename6(path).endsWith(".html") ? path : false;
@@ -14517,7 +15123,7 @@ async function cmdPatch(htmlArg, fromArg, opts, ctx) {
   const file = resolve8(cwd, htmlArg);
   let html;
   try {
-    html = readFileSync10(file, "utf8");
+    html = readFileSync11(file, "utf8");
   } catch (e) {
     fail(`\u2717 Cannot read the HTML: ${e.message}`);
     return 2;
@@ -14531,7 +15137,7 @@ async function cmdPatch(htmlArg, fromArg, opts, ctx) {
   const from = opts.from ?? fromArg;
   let replacement;
   try {
-    replacement = !from || from === "-" ? await readStream(io.stdin ?? process.stdin) : readFileSync10(resolve8(cwd, from), "utf8");
+    replacement = !from || from === "-" ? await readStream(io.stdin ?? process.stdin) : readFileSync11(resolve8(cwd, from), "utf8");
   } catch (e) {
     fail(`\u2717 Cannot read the new panel draft: ${e.message}`);
     return 2;
@@ -14686,7 +15292,7 @@ function narrationCache(home) {
     if (!isDenied(e)) throw e;
     return void 0;
   }
-  return join13(home, "cache", "tts");
+  return join14(home, "cache", "tts");
 }
 function voiceSummary(provider, captionsOnly = []) {
   if (!provider) return "none (captions only)";
@@ -14717,16 +15323,16 @@ function loadConfig({ fail, env, themes: themes2 }) {
 function themeWarnings({ fail, themes: themes2 }) {
   themes2.warnings.forEach((w2) => fail(`! ${w2}`));
 }
-function outputPath(dir, title, opts, { env, io, fail }, folder = join13(amHome(env), dir)) {
+function outputPath(dir, title, opts, { env, io, fail }, folder = join14(amHome(env), dir)) {
   if (opts.out) {
     const file2 = resolve8(io.cwd ?? process.cwd(), opts.out);
-    if (statSync6(file2, { throwIfNoEntry: false })?.isDirectory()) {
+    if (statSync7(file2, { throwIfNoEntry: false })?.isDirectory()) {
       fail("\u2717 -o names a folder; give a file path, for example -o page.html");
       return null;
     }
     return file2;
   }
-  const file = join13(folder, `${slug(title)}-${stamp(new Date(io.now?.() ?? Date.now()))}.html`);
+  const file = join14(folder, `${slug(title)}-${stamp(new Date(io.now?.() ?? Date.now()))}.html`);
   return opts.replace === void 0 ? unusedPagePath(file) : file;
 }
 function unusedPagePath(file) {
@@ -14736,17 +15342,17 @@ function unusedPagePath(file) {
   }
 }
 var inside = (dir, target) => {
-  const rel = relative3(resolve8(dir), resolve8(target));
-  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep5}`) && !isAbsolute5(rel);
+  const rel = relative4(resolve8(dir), resolve8(target));
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep6}`) && !isAbsolute6(rel);
 };
-function writePage(file, html, env, pages = join13(amHome(env), "pages")) {
+function writePage(file, html, env, pages = join14(amHome(env), "pages"), modeFrom = null) {
   const home = resolve8(amHome(env));
   const path = resolve8(file);
   if (inside(home, path)) ensureHome(home);
   mkdirSync6(dirname5(file), { recursive: true });
   if (!inside(pages, path)) return writeFileSync8(file, html);
-  const tmp = join13(dirname5(file), `.${basename6(file)}.${process.pid}.${randomBytes2(6).toString("hex")}.tmp`);
-  const mode = statSync6(file, { throwIfNoEntry: false })?.mode;
+  const tmp = join14(dirname5(file), `.${basename6(file)}.${process.pid}.${randomBytes2(6).toString("hex")}.tmp`);
+  const mode = (modeFrom && modeOf(modeFrom)) ?? statSync7(file, { throwIfNoEntry: false })?.mode;
   let fd = null;
   let created = false;
   try {
@@ -14762,9 +15368,17 @@ function writePage(file, html, env, pages = join13(amHome(env), "pages")) {
     if (created) rmSync7(tmp, { force: true });
   }
 }
-function savePage(html, file, { fallback, inPlace, pages }, { fail, env }) {
+function modeOf(path) {
+  try {
+    return statSync7(path, { throwIfNoEntry: false })?.mode;
+  } catch (e) {
+    if (!isDenied(e)) throw e;
+    return 384;
+  }
+}
+function savePage(html, file, { fallback, inPlace, pages, modeFrom }, { fail, env }) {
   const home = amHome(env);
-  const pageRoot = pages ?? join13(home, "pages");
+  const pageRoot = pages ?? join14(home, "pages");
   const inHome = inside(home, file);
   const hint = (path) => {
     if (inPlace) return "Copy the page to a folder this session can write to and patch the copy";
@@ -14772,15 +15386,15 @@ function savePage(html, file, { fallback, inPlace, pages }, { fail, env }) {
   };
   const refuse = (path, e) => fail(`\u2717 Cannot write the page: permission denied (${e.code}) ${path}. ${hint(path)}`);
   try {
-    writePage(file, html, env, pageRoot);
+    writePage(file, html, env, pageRoot, modeFrom);
     return { file };
   } catch (e) {
     if (!isDenied(e)) throw e;
     if (!(fallback && inHome)) return refuse(file, e), null;
-    const spare = join13(tempHome(), fallback, basename6(file));
+    const spare = join14(tempHome(), fallback, basename6(file));
     try {
       checkedTempHome({ create: true });
-      writePage(spare, html, env, join13(tempHome(), "pages"));
+      writePage(spare, html, env, join14(tempHome(), "pages"), modeFrom);
       return { file: spare, notice: `  ! ${home} is not writable (${e.code}): saved in the temporary folder, which the system may clear` };
     } catch (t) {
       if (t instanceof UnsafeTempHome) fail(`\u2717 Cannot write the page: ${home} is not writable (${e.code}) and ${t.dir} is not a private folder of this user. Give -o a file in a folder this session can write to`);
@@ -14798,9 +15412,9 @@ function removeEarlier(file, { fail }) {
     fail(`! Kept the earlier page ${file} (permission denied, ${e.code})`);
   }
 }
-function emit(result, file, ctx, { note: note2 = "", fallback, inPlace, pages } = {}) {
+function emit(result, file, ctx, { note: note2 = "", fallback, inPlace, pages, modeFrom } = {}) {
   const { print, env } = ctx;
-  const saved = savePage(result.html, file, { fallback, inPlace, pages }, ctx);
+  const saved = savePage(result.html, file, { fallback, inPlace, pages, modeFrom }, ctx);
   if (!saved) return null;
   print(`\u2713 ${saved.file}`);
   if (saved.notice) print(saved.notice);
@@ -14813,11 +15427,18 @@ function emit(result, file, ctx, { note: note2 = "", fallback, inPlace, pages } 
     print(`  code ${count(long.length, "warning")} (trim the block and run again, or keep it if every line matters):`);
     long.forEach((w2) => print(`  L${w2.line} [${w2.rule}] ${w2.message}`));
   }
+  printRefWarnings(result.stats.refWarnings, print);
   printComponentWarnings(result.stats.componentWarnings, print);
   printHtmlWarnings(result.stats.htmlWarnings, print);
   printMathWarnings(result.stats.mathWarnings, print);
   printWarnings(result.warnings, print, result.meta.style);
   return saved.file;
+}
+function printRefWarnings(notes = [], print) {
+  if (!notes.length) return;
+  print(`  refs ${count(notes.length, "warning")} (fix the path or the lines and run again; keep it if the path is from another project):`);
+  notes.slice(0, MAX_LISTED_WARNINGS).forEach((w2) => print(`  L${w2.line} [${w2.rule}] ${w2.message}`));
+  if (notes.length > MAX_LISTED_WARNINGS) print(`  \u2026 ${notes.length - MAX_LISTED_WARNINGS} more`);
 }
 function printComponentWarnings(notes = [], print) {
   if (!notes.length) return;
@@ -15019,7 +15640,7 @@ function cmdList({ print, fail, themes: themes2 }) {
 }
 function specimenDraft(name2, mode) {
   const sections = [...COMPONENTS.values()].map((c) => `## ${c.name}
-${c.example}`);
+${c.specimen ?? c.example}`);
   const table = "## table\n| Check | Status |\n|---|---|\n| Approved | ok passes |\n| Rejected | no fails |\n| Pending | warn needs a look |";
   return `---
 title: Theme ${name2} (${mode})
@@ -15036,7 +15657,7 @@ function cmdTheme(action, target, opts, ctx) {
     return 2;
   }
   const isFile = /\.json$/i.test(target) || /[\\/]/.test(target);
-  const path = isFile ? resolve8(io.cwd ?? process.cwd(), target) : join13(amHome(env), "themes", `${target}.json`);
+  const path = isFile ? resolve8(io.cwd ?? process.cwd(), target) : join14(amHome(env), "themes", `${target}.json`);
   const name2 = isFile ? basename6(path).replace(/\.json$/i, "") : target;
   let theme;
   let errors = [];
@@ -15090,7 +15711,7 @@ function cmdHelp(name2, { print, fail }) {
 ${comp.syntax}
 
 Example:
-${comp.example}`);
+${comp.specimen ?? comp.example}`);
   return 0;
 }
 function slug(title) {
